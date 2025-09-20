@@ -1,9 +1,23 @@
 # SciBox Talent Management System - Docker Management
 
-.PHONY: help dev-up dev-down prod-up prod-down db-up db-down logs clean build
+.PHONY: help dev-up dev-down prod-up prod-down db-up db-down logs clean build check-docker
+
+# Detect Docker Compose command (docker-compose vs docker compose)
+DOCKER_COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
+
+# Check if running on Windows (Git Bash/WSL detection)
+ifeq ($(OS),Windows_NT)
+    DETECTED_OS := Windows
+else
+    DETECTED_OS := $(shell uname -s)
+endif
 
 # Default target
 help:
+	@echo "SciBox Talent Management System"
+	@echo "Detected OS: $(DETECTED_OS)"
+	@echo "Docker Compose: $(DOCKER_COMPOSE)"
+	@echo ""
 	@echo "Available commands:"
 	@echo "  dev-up        - Start development environment"
 	@echo "  dev-down      - Stop development environment"
@@ -17,74 +31,89 @@ help:
 	@echo "  db-seed       - Seed database with sample data"
 	@echo "  clean         - Remove all containers and volumes"
 
-# Development commands
-dev-up:
-	@echo "Starting development environment..."
-	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-	@echo "Application available at http://localhost:3000"
+# Check Docker availability
+check-docker:
+	@docker --version > /dev/null 2>&1 || { echo "❌ Docker is not installed or not running"; exit 1; }
+	@$(DOCKER_COMPOSE) version > /dev/null 2>&1 || { echo "❌ Docker Compose is not available"; exit 1; }
+	@echo "✅ Docker and Docker Compose are available"
 
-dev-down:
+# Development commands
+dev-up: check-docker
+	@echo "Starting development environment..."
+	$(DOCKER_COMPOSE) -f docker-compose.yml -f docker-compose.dev.yml up -d
+	@echo "✅ Application available at http://localhost:3000"
+
+dev-down: check-docker
 	@echo "Stopping development environment..."
-	docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+	$(DOCKER_COMPOSE) -f docker-compose.yml -f docker-compose.dev.yml down
 
 # Database only commands
-db-up:
+db-up: check-docker
 	@echo "Starting database services..."
-	docker-compose up -d postgres redis
+	$(DOCKER_COMPOSE) up -d postgres redis
 
-db-down:
+db-down: check-docker
 	@echo "Stopping database services..."
-	docker-compose down postgres redis
+	$(DOCKER_COMPOSE) stop postgres redis
 
 # Production commands
-prod-build:
+prod-build: check-docker
 	@echo "Building production Docker image..."
 	docker build -t scibox-talent:latest .
 
-prod-up:
+prod-up: check-docker
 	@echo "Starting production environment..."
-	docker-compose up -d
+	$(DOCKER_COMPOSE) up -d
 
-prod-down:
+prod-down: check-docker
 	@echo "Stopping production environment..."
-	docker-compose down
+	$(DOCKER_COMPOSE) down
 
 # Utility commands
-logs:
-	docker-compose logs -f app
+logs: check-docker
+	$(DOCKER_COMPOSE) logs -f app
 
-logs-db:
-	docker-compose logs -f postgres
+logs-db: check-docker
+	$(DOCKER_COMPOSE) logs -f postgres
 
-db-migrate:
+db-migrate: check-docker
 	@echo "Running database migrations..."
-	docker-compose exec app npx prisma migrate deploy
+	$(DOCKER_COMPOSE) exec app npx prisma migrate deploy
 
-db-seed:
+db-seed: check-docker
 	@echo "Seeding database..."
-	docker-compose exec app npx prisma db seed
+	$(DOCKER_COMPOSE) exec app npx prisma db seed
 
-db-reset:
+db-reset: check-docker
 	@echo "Resetting database..."
-	docker-compose exec app npx prisma migrate reset --force
+	$(DOCKER_COMPOSE) exec app npx prisma migrate reset --force
 
 # Cleanup commands
-clean:
+clean: check-docker
 	@echo "Removing all containers and volumes..."
-	docker-compose -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans
+	$(DOCKER_COMPOSE) -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans
 	docker system prune -f
 
 # Quick setup for new developers
-setup:
+setup: check-docker
 	@echo "Setting up development environment..."
+	@echo "Detected OS: $(DETECTED_OS)"
+	@echo "Using Docker Compose: $(DOCKER_COMPOSE)"
+	@echo ""
 	@if [ ! -f .env.local ]; then \
-		echo "Creating .env.local from template..."; \
+		echo "📝 Creating .env.local from template..."; \
 		cp env.example .env.local; \
-		echo "Please edit .env.local with your SciBox API key"; \
+		echo "⚠️  Please edit .env.local with your SciBox API key"; \
+	else \
+		echo "✅ .env.local already exists"; \
 	fi
+	@echo "📦 Installing dependencies..."
 	npm install
+	@echo "🐳 Starting database services..."
 	make db-up
-	@echo "Waiting for database to be ready..."
+	@echo "⏳ Waiting for database to be ready..."
 	sleep 10
+	@echo "🔧 Running database migrations..."
 	npx prisma migrate dev --name init
 	npx prisma generate
+	@echo "✅ Setup complete! Run 'make dev-up' to start development."

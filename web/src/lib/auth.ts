@@ -25,33 +25,59 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        if (!credentials?.email) {
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
+        // Демо-пользователи для быстрого входа
+        const demoUsers = {
+          'employee@company.com': {
+            id: 'employee-demo',
+            email: 'employee@company.com',
+            name: 'Алексей Сотрудников',
+            role: 'EMPLOYEE' as const,
           },
-        })
-
-        if (!user) {
-          return null
+          'manager@company.com': {
+            id: 'manager-demo', 
+            email: 'manager@company.com',
+            name: 'Мария Менеджерова',
+            role: 'MANAGER' as const,
+          },
+          'hr@company.com': {
+            id: 'hr-demo',
+            email: 'hr@company.com', 
+            name: 'Елена HR-специалист',
+            role: 'HR' as const,
+          }
         }
 
-        // В реальном проекте здесь будет проверка пароля
-        // const isPasswordValid = await compare(credentials.password, user.password)
-
-        // if (!isPasswordValid) {
-        //   return null
-        // }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
+        // Проверяем демо-пользователей
+        const demoUser = demoUsers[credentials.email as keyof typeof demoUsers]
+        if (demoUser) {
+          return demoUser
         }
+
+        // Если не демо-пользователь, пытаемся найти в базе
+        try {
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email,
+            },
+          })
+
+          if (user) {
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              role: user.role,
+            }
+          }
+        } catch (error) {
+          console.log('Database connection error, using demo mode')
+        }
+
+        return null
       },
     }),
   ],

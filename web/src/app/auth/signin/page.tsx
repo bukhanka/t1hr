@@ -41,6 +41,29 @@ export default function SignIn() {
     }
   }
 
+  const handleDemoLogin = async (email: string, name: string) => {
+    setLoading(true)
+    setError("")
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password: "demo", // Пароль не важен для демо-пользователей
+        redirect: false,
+      })
+
+      if (result?.error) {
+        setError("Ошибка входа в демо-режиме")
+      } else {
+        router.push("/dashboard")
+      }
+    } catch (error) {
+      setError("Произошла ошибка при входе")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
@@ -98,17 +121,71 @@ export default function SignIn() {
             </Button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm font-medium text-gray-900 mb-2">
-              Демо-аккаунты:
-            </p>
-            <div className="space-y-1 text-xs text-gray-600">
-              <p>Сотрудник: employee@company.com</p>
-              <p>Менеджер: manager@company.com</p>
-              <p>HR: hr@company.com</p>
-              <p>Пароль: любой (в демо режиме)</p>
+          <div className="mt-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-muted-foreground">
+                  Или войдите быстро
+                </span>
+              </div>
             </div>
+          </div>
+
+          {/* Demo quick login buttons */}
+          <div className="mt-4 space-y-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start h-12"
+              onClick={() => handleDemoLogin('employee@company.com', 'Алексей Сотрудников')}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 text-sm font-medium">👨‍💻</span>
+                </div>
+                <div className="text-left">
+                  <p className="font-medium">Сотрудник</p>
+                  <p className="text-sm text-muted-foreground">Алексей Сотрудников</p>
+                </div>
+              </div>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start h-12"
+              onClick={() => handleDemoLogin('manager@company.com', 'Мария Менеджерова')}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-green-600 text-sm font-medium">👨‍💼</span>
+                </div>
+                <div className="text-left">
+                  <p className="font-medium">Менеджер</p>
+                  <p className="text-sm text-muted-foreground">Мария Менеджерова</p>
+                </div>
+              </div>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start h-12"
+              onClick={() => handleDemoLogin('hr@company.com', 'Елена HR-специалист')}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <span className="text-purple-600 text-sm font-medium">👩‍💼</span>
+                </div>
+                <div className="text-left">
+                  <p className="font-medium">HR-специалист</p>
+                  <p className="text-sm text-muted-foreground">Елена HR-специалист</p>
+                </div>
+              </div>
+            </Button>
           </div>
         </CardContent>
       </Card>

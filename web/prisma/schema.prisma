@@ -93,14 +93,15 @@ model Profile {
   // embedding       Unsupported("vector(1024)")?
 
   // Связи с другими моделями
-  userSkills      UserSkill[]
-  userProjects    UserProject[]
-  careerGoals     CareerGoal[]
-  badges          UserBadge[]
-  chatSessions    ChatSession[]
+  userSkills        UserSkill[]
+  userProjects      UserProject[]
+  careerGoals       CareerGoal[]
+  badges            UserBadge[]
+  chatSessions      ChatSession[]
+  shortListEntries  ShortListCandidate[]
 
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 // Справочник всех навыков в компании
