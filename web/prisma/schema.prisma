@@ -1,0 +1,299 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Модель пользователя, в основном для аутентификации и ролей
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  role      Role      @default(EMPLOYEE)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Связь с профилем 1-к-1
+  profile   Profile?
+  
+  // NextAuth поля
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+// NextAuth модели
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Перечисление ролей в системе
+enum Role {
+  EMPLOYEE
+  MANAGER
+  HR
+}
+
+// Основная модель с данными, которые сотрудник может редактировать
+model Profile {
+  id              String      @id @default(cuid())
+  userId          String      @unique
+  user            User        @relation(fields: [userId], references: [id])
+
+  // Базовые HR-данные (могут синхронизироваться)
+  jobTitle        String?     // Должность
+  department      String?     // Отдел
+  reportsToId     String?     // ID руководителя
+
+  // Геймификация
+  xp              Int         @default(0)
+  level           Int         @default(1)
+  profileStrength Int         @default(0) // "Сила профиля" от 0 до 100
+
+  // Вектор для семантического поиска. Требует расширения pgvector
+  // Размерность (1024) нужно уточнить у модели bge-m3
+  // embedding       Unsupported("vector(1024)")?
+
+  // Связи с другими моделями
+  userSkills      UserSkill[]
+  userProjects    UserProject[]
+  careerGoals     CareerGoal[]
+  badges          UserBadge[]
+  chatSessions    ChatSession[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Справочник всех навыков в компании
+model Skill {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  category    String?     // Категория навыка (например, "Языки программирования", "Инструменты")
+
+  // Связь
+  userSkills  UserSkill[]
+  
+  createdAt   DateTime    @default(now())
+}
+
+// Связующая таблица: какой пользователь каким навыком обладает
+model UserSkill {
+  id          String      @id @default(cuid())
+  profileId   String
+  skillId     String
+  level       Int         // Самооценка от 1 до 5
+  isVerified  Boolean     @default(false)
+  status      SkillStatus @default(USING)
+
+  profile     Profile     @relation(fields: [profileId], references: [id])
+  skill       Skill       @relation(fields: [skillId], references: [id])
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([profileId, skillId]) // У одного юзера не может быть двух одинаковых навыков
+}
+
+enum SkillStatus {
+  USING
+  WANTS_TO_LEARN
+}
+
+// Справочник всех проектов
+model Project {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  description  String?
+  status       ProjectStatus @default(ACTIVE)
+  
+  userProjects UserProject[]
+  
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+// Связующая таблица: кто в каком проекте участвовал
+model UserProject {
+  id           String  @id @default(cuid())
+  profileId    String
+  projectId    String
+  roleInProject String // Роль на проекте
+  achievements String? // "Мои ключевые результаты" - самое важное поле!
+  startDate    DateTime?
+  endDate      DateTime?
+
+  profile      Profile @relation(fields: [profileId], references: [id])
+  project      Project @relation(fields: [projectId], references: [id])
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([profileId, projectId]) // У одного юзера не может быть двух одинаковых проектов
+}
+
+// Справочник всех возможных бейджей
+model Badge {
+  id           String      @id @default(cuid())
+  name         String      @unique
+  description  String
+  iconUrl      String?
+  xpReward     Int         @default(0)
+
+  awardedUsers UserBadge[]
+  
+  createdAt    DateTime    @default(now())
+}
+
+// Связующая таблица: какие бейджи выданы пользователям
+model UserBadge {
+  id        String   @id @default(cuid())
+  profileId String
+  badgeId   String
+  awardedAt DateTime @default(now())
+
+  profile   Profile  @relation(fields: [profileId], references: [id])
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+
+  @@unique([profileId, badgeId]) // У одного юзера не может быть двух одинаковых бейджей
+}
+
+// Карьерные цели сотрудника
+model CareerGoal {
+  id        String   @id @default(cuid())
+  profileId String
+  // Например, "Вертикальный рост", "Горизонтальный переход"
+  goalType  String
+  // Например, "Senior Developer", "Data Science"
+  target    String
+  priority  Int      @default(1) // Приоритет цели 1-5
+
+  profile   Profile  @relation(fields: [profileId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Сессии чата с ИИ-консультантом
+model ChatSession {
+  id        String      @id @default(cuid())
+  profileId String
+  title     String?     // Краткое название сессии
+  
+  profile   Profile     @relation(fields: [profileId], references: [id])
+  messages  ChatMessage[]
+  
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+// Сообщения в чате с ИИ
+model ChatMessage {
+  id            String      @id @default(cuid())
+  sessionId     String
+  role          MessageRole // USER или ASSISTANT
+  content       String      @db.Text
+  
+  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime    @default(now())
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+// Менеджерские шорт-листы кандидатов
+model ShortList {
+  id          String         @id @default(cuid())
+  managerId   String         // ID менеджера, который создал шорт-лист
+  title       String         // Название шорт-листа (например, "Backend team for Project Phoenix")
+  description String?
+  
+  candidates  ShortListCandidate[]
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+// Кандидаты в шорт-листе
+model ShortListCandidate {
+  id          String    @id @default(cuid())
+  shortListId String
+  profileId   String
+  notes       String?   // Приватные заметки менеджера о кандидате
+  
+  shortList   ShortList @relation(fields: [shortListId], references: [id], onDelete: Cascade)
+  profile     Profile   @relation(fields: [profileId], references: [id])
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([shortListId, profileId]) // Один кандидат не может быть дважды в одном шорт-листе
+}
+
+// Вакансии в компании
+model JobOpening {
+  id             String    @id @default(cuid())
+  title          String
+  description    String    @db.Text
+  department     String
+  requirements   String[]  // Массив требуемых навыков
+  level          String    // Junior, Middle, Senior
+  status         JobStatus @default(OPEN)
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+  DRAFT
+}

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # PostgreSQL с pgvector расширением для векторного поиска
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: scibox-talent-db
+    environment:
+      POSTGRES_DB: scibox_talent_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d scibox_talent_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis для кеширования (опционально, для будущего использования)
+  redis:
+    image: redis:7-alpine
+    container_name: scibox-talent-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: scibox-talent-network
