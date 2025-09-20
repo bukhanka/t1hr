@@ -1,17 +1,14 @@
 import { NextAuthOptions } from "next-auth"
-import { PrismaAdapter } from "@auth/prisma-adapter"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { compare } from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
   },
   pages: {
     signIn: "/auth/signin",
-    signUp: "/auth/signup",
   },
   providers: [
     CredentialsProvider({
@@ -54,7 +51,7 @@ export const authOptions: NextAuthOptions = {
         // Проверяем демо-пользователей
         const demoUser = demoUsers[credentials.email as keyof typeof demoUsers]
         if (demoUser) {
-          return demoUser
+          return demoUser as any
         }
 
         // Если не демо-пользователь, пытаемся найти в базе
@@ -71,7 +68,7 @@ export const authOptions: NextAuthOptions = {
               email: user.email,
               name: user.name,
               role: user.role,
-            }
+            } as any
           }
         } catch (error) {
           console.log('Database connection error, using demo mode')
@@ -84,9 +81,9 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async session({ token, session }) {
       if (token) {
-        session.user.id = token.id
-        session.user.name = token.name
-        session.user.email = token.email
+        session.user.id = token.id as string
+        session.user.name = token.name as string
+        session.user.email = token.email as string
         session.user.role = token.role
       }
 
@@ -95,7 +92,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-        token.role = user.role
+        token.role = (user as any).role
       }
 
       return token

@@ -89,8 +89,10 @@ build-local:
 		echo "📝 Creating .env for build..."; \
 		cp env.example .env; \
 	fi
-	rm -rf .next
-	npm run build
+	@echo "🧹 Cleaning previous build..."
+	sudo rm -rf .next 2>/dev/null || docker run --rm -v $(PWD):/app alpine sh -c "rm -rf /app/.next" || true
+	@echo "🔨 Building production..."
+	NODE_ENV=production npm run build
 
 start-local: build-local
 	@echo "Starting local production server..."

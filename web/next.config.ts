@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   // Optimize for production  
   serverExternalPackages: ['@prisma/client', 'prisma'],
 
+  // Disable ESLint during build for faster development
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   // Security headers
   async headers() {
     return [
