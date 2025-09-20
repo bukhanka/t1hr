@@ -26,32 +26,31 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // Демо-пользователи для быстрого входа
-        const demoUsers = {
-          'employee@company.com': {
-            id: 'employee-demo',
-            email: 'employee@company.com',
-            name: 'Алексей Сотрудников',
-            role: 'EMPLOYEE' as const,
-          },
-          'manager@company.com': {
-            id: 'manager-demo', 
-            email: 'manager@company.com',
-            name: 'Мария Менеджерова',
-            role: 'MANAGER' as const,
-          },
-          'hr@company.com': {
-            id: 'hr-demo',
-            email: 'hr@company.com', 
-            name: 'Елена HR-специалист',
-            role: 'HR' as const,
-          }
-        }
+        // Демо-пользователи из seed данных для быстрого входа
+        const quickLoginEmails = [
+          'ivan.petrov@company.com', // Employee
+          'elena.sidorova@company.com', // Employee  
+          'svetlana.manager@company.com', // Manager
+          'ekaterina.hr@company.com' // HR
+        ]
 
-        // Проверяем демо-пользователей
-        const demoUser = demoUsers[credentials.email as keyof typeof demoUsers]
-        if (demoUser) {
-          return demoUser as any
+        // Если это один из быстрых логинов, ищем пользователя в базе
+        if (quickLoginEmails.includes(credentials.email)) {
+          try {
+            const user = await prisma.user.findUnique({
+              where: { email: credentials.email }
+            })
+            if (user) {
+              return {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+              } as any
+            }
+          } catch (error) {
+            console.log('Database connection error for quick login')
+          }
         }
 
         // Если не демо-пользователь, пытаемся найти в базе

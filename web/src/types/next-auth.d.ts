@@ -14,10 +14,12 @@ declare module "next-auth" {
     user: User & {
       id: string
       role: Role
+      profileId?: string
     }
   }
 
   interface User {
     role: Role
+    profileId?: string
   }
 }

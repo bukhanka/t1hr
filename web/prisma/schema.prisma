@@ -88,9 +88,9 @@ model Profile {
   level           Int         @default(1)
   profileStrength Int         @default(0) // "Сила профиля" от 0 до 100
 
-  // Вектор для семантического поиска. Требует расширения pgvector
-  // Размерность (1024) нужно уточнить у модели bge-m3
-  // embedding       Unsupported("vector(1024)")?
+  // Вектор для семантического поиска. Модель bge-m3 использует 1024 измерения  
+  embedding       Unsupported("vector(1024)")?
+  embeddingText   String?      // Текст, который был векторизован (для отладки)
 
   // Связи с другими моделями
   userSkills        UserSkill[]

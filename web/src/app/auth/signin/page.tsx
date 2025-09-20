@@ -140,7 +140,7 @@ export default function SignIn() {
               type="button"
               variant="outline"
               className="w-full justify-start h-12"
-              onClick={() => handleDemoLogin('employee@company.com', 'Алексей Сотрудников')}
+              onClick={() => handleDemoLogin('ivan.petrov@company.com', 'Иван Петров')}
             >
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -148,7 +148,7 @@ export default function SignIn() {
                 </div>
                 <div className="text-left">
                   <p className="font-medium">Сотрудник</p>
-                  <p className="text-sm text-muted-foreground">Алексей Сотрудников</p>
+                  <p className="text-sm text-muted-foreground">Иван Петров</p>
                 </div>
               </div>
             </Button>
@@ -157,7 +157,7 @@ export default function SignIn() {
               type="button"
               variant="outline"
               className="w-full justify-start h-12"
-              onClick={() => handleDemoLogin('manager@company.com', 'Мария Менеджерова')}
+              onClick={() => handleDemoLogin('svetlana.manager@company.com', 'Светлана Менеджерова')}
             >
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -165,7 +165,7 @@ export default function SignIn() {
                 </div>
                 <div className="text-left">
                   <p className="font-medium">Менеджер</p>
-                  <p className="text-sm text-muted-foreground">Мария Менеджерова</p>
+                  <p className="text-sm text-muted-foreground">Светлана Менеджерова</p>
                 </div>
               </div>
             </Button>
@@ -174,7 +174,7 @@ export default function SignIn() {
               type="button"
               variant="outline"
               className="w-full justify-start h-12"
-              onClick={() => handleDemoLogin('hr@company.com', 'Елена HR-специалист')}
+              onClick={() => handleDemoLogin('ekaterina.hr@company.com', 'Екатерина HR-специалист')}
             >
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
@@ -182,7 +182,7 @@ export default function SignIn() {
                 </div>
                 <div className="text-left">
                   <p className="font-medium">HR-специалист</p>
-                  <p className="text-sm text-muted-foreground">Елена HR-специалист</p>
+                  <p className="text-sm text-muted-foreground">Екатерина HR-специалист</p>
                 </div>
               </div>
             </Button>
