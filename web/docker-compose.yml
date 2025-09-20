@@ -36,12 +36,12 @@ services:
     image: scibox-talent:latest
     container_name: scibox-talent-app
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/scibox_talent_db?schema=public
       - NEXTAUTH_SECRET=scibox-talent-demo-secret-key-2024
-      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_URL=http://localhost:${APP_PORT:-3000}
       - SCIBOX_API_KEY=${SCIBOX_API_KEY}
       - SCIBOX_API_BASE_URL=https://llm.t1v.scibox.tech/v1
     depends_on:

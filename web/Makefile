@@ -29,10 +29,14 @@ help:
 	@echo ""
 	@echo "Production:"
 	@echo "  prod-build    - Build production Docker image"
-	@echo "  prod-up       - Start production environment"
+	@echo "  prod-up       - Start production environment (default port 3000)"
 	@echo "  prod-down     - Stop production environment"
 	@echo "  build-local   - Build for local production"
 	@echo "  start-local   - Start local production server"
+	@echo ""
+	@echo "Custom port examples:"
+	@echo "  make prod-up PORT=3004  - Start on port 3004"
+	@echo "  APP_PORT=3004 make prod-up  - Alternative syntax"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  logs          - Show application logs"
@@ -76,7 +80,13 @@ prod-build: check-docker
 
 prod-up: check-docker
 	@echo "Starting production environment..."
-	$(DOCKER_COMPOSE) up -d
+	@if [ -n "$(PORT)" ]; then \
+		echo "🌐 Using port: $(PORT)"; \
+		APP_PORT=$(PORT) $(DOCKER_COMPOSE) up -d; \
+	else \
+		echo "🌐 Using default port from env (3000)"; \
+		$(DOCKER_COMPOSE) up -d; \
+	fi
 
 prod-down: check-docker
 	@echo "Stopping production environment..."
