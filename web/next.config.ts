@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
 
+  // Handle font loading issues during Docker build
+  experimental: {
+    optimizePackageImports: ['@radix-ui/react-icons'],
+  },
+
   // Security headers
   async headers() {
     return [
