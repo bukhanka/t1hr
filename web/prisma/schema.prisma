@@ -89,8 +89,8 @@ model Profile {
   profileStrength Int         @default(0) // "Сила профиля" от 0 до 100
 
   // Вектор для семантического поиска. Модель bge-m3 использует 1024 измерения  
-  embedding       Unsupported("vector(1024)")?
-  embeddingText   String?      // Текст, который был векторизован (для отладки)
+  // embedding       Unsupported("vector(1024)")?  // Временно закомментировано
+  // embeddingText   String?      // Текст, который был векторизован (для отладки)  // Временно закомментировано
 
   // Связи с другими моделями
   userSkills        UserSkill[]

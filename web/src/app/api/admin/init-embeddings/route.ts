@@ -65,22 +65,24 @@ export async function GET() {
       where: { user: { role: 'EMPLOYEE' } }
     })
 
-    const profilesWithEmbeddings = await prisma.profile.count({
-      where: { 
-        user: { role: 'EMPLOYEE' },
-        embeddingText: { not: null }
-      }
-    })
+    // Временно закомментировано из-за отсутствия поля embeddingText
+    // const profilesWithEmbeddings = await prisma.profile.count({
+    //   where: { 
+    //     user: { role: 'EMPLOYEE' },
+    //     embeddingText: { not: null }
+    //   }
+    // })
 
-    const coverage = totalProfiles > 0 
-      ? Math.round((profilesWithEmbeddings / totalProfiles) * 100)
-      : 0
+    // const coverage = totalProfiles > 0 
+    //   ? Math.round((profilesWithEmbeddings / totalProfiles) * 100)
+    //   : 0
+    const coverage = 0 // Временно установлено в 0
 
     return NextResponse.json({
       totalProfiles,
-      profilesWithEmbeddings,
+      profilesWithEmbeddings: 0, // Временно установлено в 0
       coveragePercentage: coverage,
-      status: coverage === 100 ? 'complete' : coverage > 0 ? 'partial' : 'not_started',
+      status: 'not_started', // Временно установлено, так как coverage = 0
       readyForSemanticSearch: coverage >= 50
     })
 

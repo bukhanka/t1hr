@@ -133,7 +133,7 @@ export class VectorizationService {
         data: {
       // Сохраняем вектор и текст документа
       // embedding: `[${embedding.join(',')}]`, // TODO: Активировать когда pgvector полностью настроен
-      embeddingText: documentText.substring(0, 1000) // Сохраняем для тестирования и отладки
+      // embeddingText: documentText.substring(0, 1000) // Временно закомментировано
         }
       })
 

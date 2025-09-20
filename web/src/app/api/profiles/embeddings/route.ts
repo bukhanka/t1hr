@@ -118,12 +118,14 @@ export async function GET() {
       where: { user: { role: 'EMPLOYEE' } }
     })
 
-    const profilesWithEmbeddings = await prisma.profile.count({
-      where: { 
-        user: { role: 'EMPLOYEE' },
-        embeddingText: { not: null }
-      }
-    })
+    // Временно закомментировано из-за отсутствия поля embeddingText
+    // const profilesWithEmbeddings = await prisma.profile.count({
+    //   where: { 
+    //     user: { role: 'EMPLOYEE' },
+    //     embeddingText: { not: null }
+    //   }
+    // })
+    const profilesWithEmbeddings = 0 // Временно установлено в 0
 
     const coveragePercentage = totalProfiles > 0 
       ? Math.round((profilesWithEmbeddings / totalProfiles) * 100)
