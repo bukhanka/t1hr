@@ -289,7 +289,7 @@ async function main() {
     
     // Каждому пользователю назначаем 5-12 случайных навыков
     const numSkills = Math.floor(Math.random() * 8) + 5
-    const userSkillsSet = new Set()
+    const userSkillsSet = new Set<string>()
     
     // Выбираем случайные навыки
     while (userSkillsSet.size < numSkills) {
@@ -322,7 +322,7 @@ async function main() {
     
     // Каждому сотруднику назначаем 2-5 проектов
     const numProjects = Math.floor(Math.random() * 4) + 2
-    const userProjectsSet = new Set()
+    const userProjectsSet = new Set<string>()
     
     while (userProjectsSet.size < numProjects) {
       const randomProject = projects[Math.floor(Math.random() * projects.length)]
@@ -397,7 +397,7 @@ async function main() {
     
     // Каждый получает 1-4 бейджа
     const numBadges = Math.floor(Math.random() * 4) + 1
-    const userBadgesSet = new Set()
+    const userBadgesSet = new Set<string>()
     
     while (userBadgesSet.size < numBadges) {
       const randomBadge = badges[Math.floor(Math.random() * badges.length)]

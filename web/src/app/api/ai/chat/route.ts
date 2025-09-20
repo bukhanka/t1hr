@@ -361,20 +361,20 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Ошибка в AI chat API:', error)
-    console.error('❌ Error type:', error?.constructor?.name)
-    console.error('❌ Error message:', error?.message)
-    console.error('❌ Stack trace:', error?.stack)
+    console.error('❌ Error type:', (error as Error)?.constructor?.name)
+    console.error('❌ Error message:', (error as Error)?.message)
+    console.error('❌ Stack trace:', (error as Error)?.stack)
     
     // Если это ошибка валидации или клиентская ошибка, возвращаем 400
-    if (error?.message?.includes('validation') || error?.message?.includes('invalid')) {
+    if ((error as Error)?.message?.includes('validation') || (error as Error)?.message?.includes('invalid')) {
       return NextResponse.json(
-        { error: 'Ошибка валидации данных', details: error.message },
+        { error: 'Ошибка валидации данных', details: (error as Error).message },
         { status: 400 }
       )
     }
     
     return NextResponse.json(
-      { error: 'Внутренняя ошибка сервера', details: error?.message || 'Unknown error' },
+      { error: 'Внутренняя ошибка сервера', details: (error as Error)?.message || 'Unknown error' },
       { status: 500 }
     )
   }

@@ -11,7 +11,7 @@ const profileUpdateSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -23,7 +23,7 @@ export async function GET(
       )
     }
 
-    const { userId } = params
+    const { userId } = await params
 
     // Проверяем права доступа
     if (session.user.id !== userId && session.user.role === 'EMPLOYEE') {
@@ -95,7 +95,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -107,7 +107,7 @@ export async function PATCH(
       )
     }
 
-    const { userId } = params
+    const { userId } = await params
 
     // Только сотрудник может редактировать свой профиль
     if (session.user.id !== userId) {
