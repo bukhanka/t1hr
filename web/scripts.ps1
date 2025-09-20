@@ -51,6 +51,14 @@ function Invoke-Setup {
         Write-Host "✅ .env.local already exists" -ForegroundColor Green
     }
     
+    if (-not (Test-Path ".env")) {
+        Write-Host "Creating .env for Prisma..." -ForegroundColor Yellow
+        Copy-Item "env.example" ".env"
+        Write-Host "✅ .env created for Prisma CLI" -ForegroundColor Green
+    } else {
+        Write-Host "✅ .env already exists" -ForegroundColor Green
+    }
+    
     Write-Host "Installing dependencies..." -ForegroundColor Yellow
     npm install
     

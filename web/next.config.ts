@@ -4,11 +4,8 @@ const nextConfig: NextConfig = {
   // Enable standalone output for Docker
   output: 'standalone',
   
-  // Optimize for production
-  experimental: {
-    // Enable server components optimization
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
-  },
+  // Optimize for production  
+  serverExternalPackages: ['@prisma/client', 'prisma'],
 
   // Security headers
   async headers() {

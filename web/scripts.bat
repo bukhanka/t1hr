@@ -37,6 +37,13 @@ if not exist .env.local (
 ) else (
     echo .env.local already exists
 )
+if not exist .env (
+    echo Creating .env for Prisma...
+    copy env.example .env
+    echo .env created for Prisma CLI
+) else (
+    echo .env already exists
+)
 echo Installing dependencies...
 npm install
 echo Starting database services...

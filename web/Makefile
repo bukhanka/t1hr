@@ -19,16 +19,24 @@ help:
 	@echo "Docker Compose: $(DOCKER_COMPOSE)"
 	@echo ""
 	@echo "Available commands:"
+	@echo "  setup         - Initial setup (first time)"
+	@echo ""
+	@echo "Development:"
 	@echo "  dev-up        - Start development environment"
-	@echo "  dev-down      - Stop development environment"
+	@echo "  dev-down      - Stop development environment" 
 	@echo "  db-up         - Start only database services"
 	@echo "  db-down       - Stop database services"
+	@echo ""
+	@echo "Production:"
 	@echo "  prod-build    - Build production Docker image"
 	@echo "  prod-up       - Start production environment"
 	@echo "  prod-down     - Stop production environment"
+	@echo "  build-local   - Build for local production"
+	@echo "  start-local   - Start local production server"
+	@echo ""
+	@echo "Utilities:"
 	@echo "  logs          - Show application logs"
 	@echo "  db-migrate    - Run database migrations"
-	@echo "  db-seed       - Seed database with sample data"
 	@echo "  clean         - Remove all containers and volumes"
 
 # Check Docker availability
@@ -59,6 +67,11 @@ db-down: check-docker
 # Production commands
 prod-build: check-docker
 	@echo "Building production Docker image..."
+	@if [ ! -f .env ]; then \
+		echo "📝 Creating .env for production build..."; \
+		cp env.example .env; \
+		echo "⚠️  Make sure to set SCIBOX_API_KEY in .env"; \
+	fi
 	docker build -t scibox-talent:latest .
 
 prod-up: check-docker
@@ -68,6 +81,20 @@ prod-up: check-docker
 prod-down: check-docker
 	@echo "Stopping production environment..."
 	$(DOCKER_COMPOSE) down
+
+# Local production build and start
+build-local:
+	@echo "Building application for local production..."
+	@if [ ! -f .env ]; then \
+		echo "📝 Creating .env for build..."; \
+		cp env.example .env; \
+	fi
+	rm -rf .next
+	npm run build
+
+start-local: build-local
+	@echo "Starting local production server..."
+	npm start
 
 # Utility commands
 logs: check-docker
@@ -106,6 +133,13 @@ setup: check-docker
 		echo "⚠️  Please edit .env.local with your SciBox API key"; \
 	else \
 		echo "✅ .env.local already exists"; \
+	fi
+	@if [ ! -f .env ]; then \
+		echo "📝 Creating .env for Prisma..."; \
+		cp env.example .env; \
+		echo "✅ .env created for Prisma CLI"; \
+	else \
+		echo "✅ .env already exists"; \
 	fi
 	@echo "📦 Installing dependencies..."
 	npm install
