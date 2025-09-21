@@ -685,6 +685,16 @@ async function main() {
   // Импортируем и запускаем в фоне после небольшой задержки
   setTimeout(async () => {
     try {
+      // Сначала проверяем и настраиваем pgvector
+      console.log('🔧 Проверяем pgvector...')
+      
+      // Включаем расширение и добавляем колонку если нужно
+      await prisma.$executeRaw`CREATE EXTENSION IF NOT EXISTS vector`
+      await prisma.$executeRaw`ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS embedding vector(1024)`
+      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS profile_embedding_cosine_idx ON "Profile" USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64)`
+      
+      console.log('✅ pgvector настроен, запускаем генерацию эмбеддингов...')
+      
       const { AutoEmbeddingService } = await import('../src/lib/auto-embeddings')
       const result = await AutoEmbeddingService.initializeMissingEmbeddings()
       console.log('✅ Автоматическая генерация эмбеддингов завершена:', result)

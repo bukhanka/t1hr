@@ -43,6 +43,7 @@ help:
 	@echo "  db-migrate    - Run database migrations + pgvector setup"
 	@echo "  db-seed       - Seed database with pgvector setup"
 	@echo "  db-reset      - Reset database + pgvector setup"
+	@echo "  db-smart-reset - Smart reset: skip seed, setup pgvector, then seed"
 	@echo "  db-full-reset - Full reset: containers + DB + pgvector + seed"
 	@echo "  db-setup-pgvector - Setup pgvector extensions and indexes"
 	@echo "  db-test-pgvector  - Test pgvector functionality"
@@ -135,9 +136,27 @@ db-seed: check-docker
 
 db-reset: check-docker
 	@echo "Resetting database..."
+	@echo "⚠️  Use 'make db-smart-reset' for automatic pgvector setup"
 	$(DOCKER_COMPOSE) exec app npx prisma migrate reset --force
 	@echo "Setting up pgvector after reset..."
 	make db-setup-pgvector
+
+# Smart reset with pgvector auto-setup
+db-smart-reset: check-docker
+	@echo "🧠 Smart database reset with pgvector auto-setup..."
+	@echo "🐳 Ensuring database is running..."
+	make db-up
+	@echo "⏳ Waiting for database..."
+	sleep 5
+	@echo "🔄 Resetting database without seed..."
+	$(DOCKER_COMPOSE) exec postgres psql -U postgres -d scibox_talent_db -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+	@echo "🔧 Running migrations..."
+	npx prisma migrate deploy
+	@echo "🔧 Setting up pgvector..."
+	make db-setup-pgvector
+	@echo "🌱 Running seed with pgvector ready..."
+	npx prisma db seed
+	@echo "✅ Smart reset completed!"
 
 # pgvector specific commands
 db-setup-pgvector: check-docker
