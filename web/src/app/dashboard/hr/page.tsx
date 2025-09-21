@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { EmbeddingManager } from "@/components/embedding-manager"
 import { 
   BarChart3,
   TrendingUp,
@@ -151,6 +152,9 @@ export default async function HRDashboard() {
       </Card>
 
       {/* Анализ разрывов в компетенциях */}
+      {/* Управление эмбеддингами */}
+      <EmbeddingManager />
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>

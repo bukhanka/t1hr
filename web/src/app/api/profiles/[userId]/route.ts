@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { AutoEmbeddingService } from '@/lib/auto-embeddings'
 import { z } from 'zod'
 
 const profileUpdateSchema = z.object({
@@ -154,6 +155,9 @@ export async function PATCH(
         }
       }
     })
+
+    // 🚀 Автоматически обновляем эмбеддинг в фоне
+    AutoEmbeddingService.scheduleEmbeddingUpdate(updatedProfile.id, 3000)
 
     // Обновляем силу профиля
     await updateProfileStrength(userId)

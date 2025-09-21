@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     console.log(`🧠 Умный поиск талантов: "${query}" (тип: ${positionType})`)
 
     // Используем новую композитную систему ранжирования
-    let searchResults = await SmartRankingService.searchTalentsWithCompositeRanking(
+    let searchResults: any[] = await SmartRankingService.searchTalentsWithCompositeRanking(
       query, 
       positionType as any, 
       20

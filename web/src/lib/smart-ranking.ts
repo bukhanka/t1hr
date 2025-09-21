@@ -1,5 +1,7 @@
 import { openai, MODELS } from './openai'
 import { prisma } from './prisma'
+import { VectorizationService } from './vectorization'
+import { smartCache, createCacheKey, cacheWithRefresh } from './cache'
 
 /**
  * Интеллектуальная система ранжирования для HR/менеджеров и рекомендаций сотрудникам
@@ -320,7 +322,7 @@ export class SmartRankingService {
 
   private static async calculateSkillSemanticSimilarity(skill: string, requiredSkills: string[]): Promise<number> {
     // Простая эвристика для связанных навыков
-    const relatedSkills = {
+    const relatedSkills: Record<string, string[]> = {
       'react': ['javascript', 'jsx', 'frontend', 'ui'],
       'python': ['django', 'flask', 'fastapi', 'data science'],
       'java': ['spring', 'spring boot', 'jvm', 'kotlin'],
@@ -530,12 +532,60 @@ export class SmartRankingService {
     query: string,
     positionType: keyof typeof SmartRankingService.WEIGHTS_CONFIGS = 'TECHNICAL_ROLE',
     limit: number = 20
-  ) {
+  ): Promise<any[]> {
     try {
-      // Получаем всех подходящих кандидатов (базовая фильтрация)
+      console.log(`🧠 Умный поиск с векторизацией: "${query}"`)
+      
+      // 🎯 Проверяем кэш
+      const cacheKey = createCacheKey('talent_search', query, positionType, limit)
+      const cachedResult = smartCache.get<any[]>(cacheKey)
+      if (cachedResult) {
+        console.log('⚡ Результаты из кэша!')
+        return cachedResult
+      }
+      
+      // 🚀 СНАЧАЛА пробуем векторный поиск
+      const vectorResults = await VectorizationService.semanticSearch(query, limit * 2, 0.2)
+      
+      if (vectorResults && vectorResults.length > 0) {
+        console.log(`✅ Векторный поиск дал ${vectorResults.length} результатов`)
+        
+        // Берем ID профилей из векторного поиска
+        const profileIds = vectorResults.map(r => r.profileId)
+        
+        // Применяем композитное ранжирование к найденным кандидатам
+        const rankedCandidates = await this.rankCandidatesForPosition(query, profileIds, positionType)
+        
+        // Комбинируем векторный score с композитным
+        const hybridResults = rankedCandidates.map(candidate => {
+          const vectorResult = vectorResults.find(v => v.profileId === candidate.profileId)
+          const vectorSimilarity = vectorResult?.similarity || 0
+          
+          // Гибридный score: 70% композитный + 30% векторный
+          const hybridScore = candidate.compositeScore * 0.7 + vectorSimilarity * 0.3
+          
+          return {
+            ...candidate,
+            hybridScore,
+            vectorSimilarity,
+            algorithm: 'hybrid'
+          }
+        }).sort((a, b) => b.hybridScore - a.hybridScore)
+        
+        const finalResults = hybridResults.slice(0, limit)
+        
+        // Кэшируем результат на 10 минут
+        smartCache.set(cacheKey, finalResults, 10)
+        
+        return finalResults
+      }
+      
+      console.log('⚠️ Векторный поиск не дал результатов, используем fallback')
+      
+      // Fallback: классический поиск
       const profiles = await prisma.profile.findMany({
         where: {
-          profileStrength: { gte: 30 }, // Минимум 30% заполненности
+          profileStrength: { gte: 30 },
           user: { role: 'EMPLOYEE' }
         },
         include: {
@@ -544,15 +594,23 @@ export class SmartRankingService {
           userProjects: { include: { project: true } },
           careerGoals: true
         },
-        take: 50 // Берем больше для качественной фильтрации
+        take: 50
       })
 
       const profileIds = profiles.map(p => p.id)
-      
-      // Применяем композитное ранжирование
       const rankedCandidates = await this.rankCandidatesForPosition(query, profileIds, positionType)
       
-      return rankedCandidates.slice(0, limit)
+      const fallbackResults = rankedCandidates.slice(0, limit).map(c => ({
+        ...c,
+        hybridScore: c.compositeScore,
+        vectorSimilarity: 0,
+        algorithm: 'composite_only'
+      }))
+      
+      // Кэшируем fallback результат на 5 минут
+      smartCache.set(cacheKey, fallbackResults, 5)
+      
+      return fallbackResults
       
     } catch (error) {
       console.error('Ошибка в композитном поиске талантов:', error)

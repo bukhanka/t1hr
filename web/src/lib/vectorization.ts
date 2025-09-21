@@ -127,15 +127,14 @@ export class VectorizationService {
         return false
       }
 
-      // Обновляем профиль в БД
-      await prisma.profile.update({
-        where: { id: profileId },
-        data: {
-      // Сохраняем вектор и текст документа
-      // embedding: `[${embedding.join(',')}]`, // TODO: Активировать когда pgvector полностью настроен
-      // embeddingText: documentText.substring(0, 1000) // Временно закомментировано
-        }
-      })
+      // Обновляем профиль в БД (используем raw SQL для pgvector)
+      await prisma.$executeRaw`
+        UPDATE "Profile" 
+        SET embedding = ${`[${embedding.join(',')}]`}::vector,
+            "embeddingText" = ${documentText.substring(0, 1000)},
+            "updatedAt" = NOW()
+        WHERE id = ${profileId}
+      `
 
       console.log(`🎯 Эмбеддинг обновлен для профиля ${profileId}`)
       return true
@@ -200,26 +199,29 @@ export class VectorizationService {
         return null
       }
 
-      // TODO: Выполняем векторный поиск в PostgreSQL когда pgvector будет полностью поддерживаться
-      // Временно возвращаем null для fallback на простой поиск
-      console.log('🔄 Векторный поиск временно отключен, используется fallback')
-      return null
+      // 🚀 НАСТОЯЩИЙ векторный поиск через pgvector!
+      console.log('🔍 Выполняем векторный поиск через pgvector...')
       
-      // Код для будущего использования когда pgvector будет полностью поддерживаться:
-      /*
+      const queryVector = `[${queryEmbedding.join(',')}]`
+      
       const results = await prisma.$queryRaw<Array<{
         id: string
         similarity: number
       }>>`
         SELECT 
           id,
-          1 - (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) as similarity
+          (1 - (embedding <=> ${queryVector}::vector))::float as similarity
         FROM "Profile"
         WHERE embedding IS NOT NULL
-          AND (1 - (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector)) > ${threshold}
-        ORDER BY similarity DESC
+          AND (1 - (embedding <=> ${queryVector}::vector)) > ${threshold}
+        ORDER BY embedding <=> ${queryVector}::vector ASC
         LIMIT ${limit}
       `
+
+      if (results.length === 0) {
+        console.log('🔍 Векторный поиск не дал результатов, возможно нет эмбеддингов')
+        return []
+      }
 
       // Получаем полные данные профилей
       const profileIds = results.map(r => r.id)
@@ -241,7 +243,7 @@ export class VectorizationService {
         }
       })
 
-      // Объединяем результаты с данными профилей
+      // Объединяем результаты с данными профилей, сохраняя порядок сортировки
       const enrichedResults = results.map(result => {
         const profile = profiles.find(p => p.id === result.id)
         return {
@@ -251,10 +253,9 @@ export class VectorizationService {
         }
       }).filter(r => r.profile)
 
-      console.log(`🔍 Семантический поиск: найдено ${enrichedResults.length} результатов для запроса "${queryText}"`)
+      console.log(`✅ Векторный поиск: найдено ${enrichedResults.length} результатов для запроса "${queryText}"`)
       
       return enrichedResults
-      */
 
     } catch (error) {
       console.error('Ошибка при выполнении семантического поиска:', error)

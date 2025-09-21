@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,41 +7,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Модель пользователя, в основном для аутентификации и ролей
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String?
-  role      Role      @default(EMPLOYEE)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  // Связь с профилем 1-к-1
-  profile   Profile?
-  
-  // NextAuth поля
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  role          Role      @default(EMPLOYEE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   emailVerified DateTime?
   image         String?
   accounts      Account[]
+  profile       Profile?
   sessions      Session[]
 }
 
-// NextAuth модели
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -65,110 +55,352 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Перечисление ролей в системе
+model Profile {
+  id                    String                 @id @default(cuid())
+  userId                String                 @unique
+  jobTitle              String?
+  department            String?
+  reportsToId           String?
+  xp                    Int                    @default(0)
+  level                 Int                    @default(1)
+  profileStrength       Int                    @default(0)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  tCoins                Int                    @default(100)
+  totalEarned           Int                    @default(0)
+  onboardingCompleted   Boolean                @default(false)
+  onboardingCompletedAt DateTime?
+  embeddingText         String?
+  // embedding будет добавлен через post-migration.sql как vector(1024)
+  // Prisma не может напрямую работать с pgvector типами
+  careerGoals           CareerGoal[]
+  chatSessions          ChatSession[]
+  createdCommunities    Community[]            @relation("CommunityCreator")
+  communityMemberships  CommunityMember[]
+  communityPosts        CommunityPost[]
+  postComments          CommunityPostComment[]
+  postLikes             CommunityPostLike[]
+  user                  User                   @relation(fields: [userId], references: [id])
+  shortListEntries      ShortListCandidate[]
+  tcoinTransactions     TCoinTransaction[]
+  badges                UserBadge[]
+  userCourses           UserCourse[]
+  mentorPrograms        UserMentorProgram[]
+  userProjects          UserProject[]
+  userSkills            UserSkill[]
+}
+
+model Skill {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  category    String?
+  createdAt   DateTime    @default(now())
+  userSkills  UserSkill[]
+}
+
+model UserSkill {
+  id         String      @id @default(cuid())
+  profileId  String
+  skillId    String
+  level      Int
+  isVerified Boolean     @default(false)
+  status     SkillStatus @default(USING)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  profile    Profile     @relation(fields: [profileId], references: [id])
+  skill      Skill       @relation(fields: [skillId], references: [id])
+
+  @@unique([profileId, skillId])
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  description  String?
+  status       ProjectStatus @default(ACTIVE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  userProjects UserProject[]
+}
+
+model UserProject {
+  id            String    @id @default(cuid())
+  profileId     String
+  projectId     String
+  roleInProject String
+  achievements  String?
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  profile       Profile   @relation(fields: [profileId], references: [id])
+  project       Project   @relation(fields: [projectId], references: [id])
+
+  @@unique([profileId, projectId])
+}
+
+model Badge {
+  id           String      @id @default(cuid())
+  name         String      @unique
+  description  String
+  iconUrl      String?
+  xpReward     Int         @default(0)
+  createdAt    DateTime    @default(now())
+  awardedUsers UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  profileId String
+  badgeId   String
+  awardedAt DateTime @default(now())
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  profile   Profile  @relation(fields: [profileId], references: [id])
+
+  @@unique([profileId, badgeId])
+}
+
+model CareerGoal {
+  id        String   @id @default(cuid())
+  profileId String
+  goalType  String
+  target    String
+  priority  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  profile   Profile  @relation(fields: [profileId], references: [id])
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  profileId String
+  title     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+  profile   Profile       @relation(fields: [profileId], references: [id])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  role      MessageRole
+  content   String
+  createdAt DateTime    @default(now())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model ShortList {
+  id          String               @id @default(cuid())
+  managerId   String
+  title       String
+  description String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  candidates  ShortListCandidate[]
+}
+
+model ShortListCandidate {
+  id          String    @id @default(cuid())
+  shortListId String
+  profileId   String
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  profile     Profile   @relation(fields: [profileId], references: [id])
+  shortList   ShortList @relation(fields: [shortListId], references: [id], onDelete: Cascade)
+
+  @@unique([shortListId, profileId])
+}
+
+model JobOpening {
+  id           String    @id @default(cuid())
+  title        String
+  description  String
+  department   String
+  requirements String[]
+  level        String
+  status       JobStatus @default(OPEN)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Course {
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  category    String
+  level       String
+  duration    Int?
+  format      String
+  skills      String[]
+  status      CourseStatus @default(ACTIVE)
+  xpReward    Int          @default(50)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  userCourses UserCourse[]
+}
+
+model UserCourse {
+  id          String         @id @default(cuid())
+  profileId   String
+  courseId    String
+  status      LearningStatus @default(PLANNED)
+  startDate   DateTime?
+  completedAt DateTime?
+  xpAwarded   Int            @default(0)
+  progress    Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  course      Course         @relation(fields: [courseId], references: [id])
+  profile     Profile        @relation(fields: [profileId], references: [id])
+
+  @@unique([profileId, courseId])
+}
+
+model MentorProgram {
+  id           String              @id @default(cuid())
+  title        String
+  description  String
+  skills       String[]
+  mentorId     String
+  maxSlots     Int                 @default(3)
+  status       String              @default("ACTIVE")
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  participants UserMentorProgram[]
+}
+
+model UserMentorProgram {
+  id        String        @id @default(cuid())
+  profileId String
+  programId String
+  role      MentorRole
+  status    String        @default("ACTIVE")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  profile   Profile       @relation(fields: [profileId], references: [id])
+  program   MentorProgram @relation(fields: [programId], references: [id])
+
+  @@unique([profileId, programId])
+}
+
+model TCoinTransaction {
+  id          String   @id @default(cuid())
+  profileId   String
+  amount      Int
+  type        String
+  source      String
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  profile     Profile  @relation(fields: [profileId], references: [id])
+}
+
+model RewardItem {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  cost        Int
+  category    String
+  imageUrl    String?
+  inStock     Boolean  @default(true)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Leaderboard {
+  id          String    @id @default(cuid())
+  type        String
+  period      String
+  data        Json
+  generatedAt DateTime  @default(now())
+  validUntil  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Community {
+  id          String            @id @default(cuid())
+  name        String
+  description String
+  type        String
+  tags        String[]
+  privacy     String            @default("PUBLIC")
+  imageUrl    String?
+  creatorId   String
+  memberCount Int               @default(0)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  creator     Profile           @relation("CommunityCreator", fields: [creatorId], references: [id])
+  members     CommunityMember[]
+  posts       CommunityPost[]
+}
+
+model CommunityMember {
+  id          String    @id @default(cuid())
+  communityId String
+  profileId   String
+  role        String    @default("MEMBER")
+  joinedAt    DateTime  @default(now())
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  profile     Profile   @relation(fields: [profileId], references: [id])
+
+  @@unique([communityId, profileId])
+}
+
+model CommunityPost {
+  id            String                 @id @default(cuid())
+  communityId   String
+  authorId      String
+  title         String?
+  content       String
+  type          String                 @default("TEXT")
+  likesCount    Int                    @default(0)
+  commentsCount Int                    @default(0)
+  isPinned      Boolean                @default(false)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  author        Profile                @relation(fields: [authorId], references: [id])
+  community     Community              @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  comments      CommunityPostComment[]
+  likes         CommunityPostLike[]
+}
+
+model CommunityPostLike {
+  id        String        @id @default(cuid())
+  postId    String
+  profileId String
+  createdAt DateTime      @default(now())
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  profile   Profile       @relation(fields: [profileId], references: [id])
+
+  @@unique([postId, profileId])
+}
+
+model CommunityPostComment {
+  id        String        @id @default(cuid())
+  postId    String
+  authorId  String
+  content   String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  author    Profile       @relation(fields: [authorId], references: [id])
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
 enum Role {
   EMPLOYEE
   MANAGER
   HR
 }
 
-// Основная модель с данными, которые сотрудник может редактировать
-model Profile {
-  id              String      @id @default(cuid())
-  userId          String      @unique
-  user            User        @relation(fields: [userId], references: [id])
-
-  // Базовые HR-данные (могут синхронизироваться)
-  jobTitle        String?     // Должность
-  department      String?     // Отдел
-  reportsToId     String?     // ID руководителя
-
-  // Геймификация
-  xp              Int         @default(0)
-  level           Int         @default(1)
-  profileStrength Int         @default(0) // "Сила профиля" от 0 до 100
-  
-  // T-Coins система (внутренняя валюта)
-  tCoins          Int         @default(100)  // Стартовые T-Coins
-  totalEarned     Int         @default(0)    // Всего заработано (для статистики)
-  
-  // Онбординг
-  onboardingCompleted Boolean  @default(false) // Завершен ли онбординг
-  onboardingCompletedAt DateTime?              // Дата завершения онбординга
-
-  // Вектор для семантического поиска. Модель bge-m3 использует 1024 измерения  
-  // embedding       Unsupported("vector(1024)")?  // Временно закомментировано
-  // embeddingText   String?      // Текст, который был векторизован (для отладки)  // Временно закомментировано
-
-  // Связи с другими моделями
-  userSkills        UserSkill[]
-  userProjects      UserProject[]
-  careerGoals       CareerGoal[]
-  badges            UserBadge[]
-  chatSessions      ChatSession[]
-  shortListEntries  ShortListCandidate[]
-  userCourses       UserCourse[]
-  mentorPrograms    UserMentorProgram[]
-  tcoinTransactions TCoinTransaction[]
-  
-  // Networking и сообщества
-  createdCommunities    Community[]         @relation("CommunityCreator")
-  communityMemberships  CommunityMember[]
-  communityPosts        CommunityPost[]
-  postLikes             CommunityPostLike[]
-  postComments          CommunityPostComment[]
-
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-}
-
-// Справочник всех навыков в компании
-model Skill {
-  id          String      @id @default(cuid())
-  name        String      @unique
-  description String?
-  category    String?     // Категория навыка (например, "Языки программирования", "Инструменты")
-
-  // Связь
-  userSkills  UserSkill[]
-  
-  createdAt   DateTime    @default(now())
-}
-
-// Связующая таблица: какой пользователь каким навыком обладает
-model UserSkill {
-  id          String      @id @default(cuid())
-  profileId   String
-  skillId     String
-  level       Int         // Самооценка от 1 до 5
-  isVerified  Boolean     @default(false)
-  status      SkillStatus @default(USING)
-
-  profile     Profile     @relation(fields: [profileId], references: [id])
-  skill       Skill       @relation(fields: [skillId], references: [id])
-
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  @@unique([profileId, skillId]) // У одного юзера не может быть двух одинаковых навыков
-}
-
 enum SkillStatus {
   USING
   WANTS_TO_LEARN
-}
-
-// Справочник всех проектов
-model Project {
-  id           String        @id @default(cuid())
-  name         String        @unique
-  description  String?
-  status       ProjectStatus @default(ACTIVE)
-  
-  userProjects UserProject[]
-  
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
 }
 
 enum ProjectStatus {
@@ -177,138 +409,9 @@ enum ProjectStatus {
   ARCHIVED
 }
 
-// Связующая таблица: кто в каком проекте участвовал
-model UserProject {
-  id           String  @id @default(cuid())
-  profileId    String
-  projectId    String
-  roleInProject String // Роль на проекте
-  achievements String? // "Мои ключевые результаты" - самое важное поле!
-  startDate    DateTime?
-  endDate      DateTime?
-
-  profile      Profile @relation(fields: [profileId], references: [id])
-  project      Project @relation(fields: [projectId], references: [id])
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@unique([profileId, projectId]) // У одного юзера не может быть двух одинаковых проектов
-}
-
-// Справочник всех возможных бейджей
-model Badge {
-  id           String      @id @default(cuid())
-  name         String      @unique
-  description  String
-  iconUrl      String?
-  xpReward     Int         @default(0)
-
-  awardedUsers UserBadge[]
-  
-  createdAt    DateTime    @default(now())
-}
-
-// Связующая таблица: какие бейджи выданы пользователям
-model UserBadge {
-  id        String   @id @default(cuid())
-  profileId String
-  badgeId   String
-  awardedAt DateTime @default(now())
-
-  profile   Profile  @relation(fields: [profileId], references: [id])
-  badge     Badge    @relation(fields: [badgeId], references: [id])
-
-  @@unique([profileId, badgeId]) // У одного юзера не может быть двух одинаковых бейджей
-}
-
-// Карьерные цели сотрудника
-model CareerGoal {
-  id        String   @id @default(cuid())
-  profileId String
-  // Например, "Вертикальный рост", "Горизонтальный переход"
-  goalType  String
-  // Например, "Senior Developer", "Data Science"
-  target    String
-  priority  Int      @default(1) // Приоритет цели 1-5
-
-  profile   Profile  @relation(fields: [profileId], references: [id])
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// Сессии чата с ИИ-консультантом
-model ChatSession {
-  id        String      @id @default(cuid())
-  profileId String
-  title     String?     // Краткое название сессии
-  
-  profile   Profile     @relation(fields: [profileId], references: [id])
-  messages  ChatMessage[]
-  
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-}
-
-// Сообщения в чате с ИИ
-model ChatMessage {
-  id            String      @id @default(cuid())
-  sessionId     String
-  role          MessageRole // USER или ASSISTANT
-  content       String      @db.Text
-  
-  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
-  createdAt     DateTime    @default(now())
-}
-
 enum MessageRole {
   USER
   ASSISTANT
-}
-
-// Менеджерские шорт-листы кандидатов
-model ShortList {
-  id          String         @id @default(cuid())
-  managerId   String         // ID менеджера, который создал шорт-лист
-  title       String         // Название шорт-листа (например, "Backend team for Project Phoenix")
-  description String?
-  
-  candidates  ShortListCandidate[]
-  
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-}
-
-// Кандидаты в шорт-листе
-model ShortListCandidate {
-  id          String    @id @default(cuid())
-  shortListId String
-  profileId   String
-  notes       String?   // Приватные заметки менеджера о кандидате
-  
-  shortList   ShortList @relation(fields: [shortListId], references: [id], onDelete: Cascade)
-  profile     Profile   @relation(fields: [profileId], references: [id])
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@unique([shortListId, profileId]) // Один кандидат не может быть дважды в одном шорт-листе
-}
-
-// Вакансии в компании
-model JobOpening {
-  id             String    @id @default(cuid())
-  title          String
-  description    String    @db.Text
-  department     String
-  requirements   String[]  // Массив требуемых навыков
-  level          String    // Junior, Middle, Senior
-  status         JobStatus @default(OPEN)
-  
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
 }
 
 enum JobStatus {
@@ -317,220 +420,20 @@ enum JobStatus {
   DRAFT
 }
 
-// Курсы и образовательные программы  
-model Course {
-  id          String        @id @default(cuid())
-  title       String
-  description String        @db.Text
-  category    String        // "Техническое", "Soft Skills", "Менеджмент"
-  level       String        // "Junior", "Middle", "Senior", "All"
-  duration    Int?          // В часах
-  format      String        // "Online", "Offline", "Hybrid"
-  skills      String[]      // Какие навыки развивает
-  status      CourseStatus  @default(ACTIVE)
-  xpReward    Int           @default(50) // XP за завершение курса
-  
-  userCourses UserCourse[]
-  
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-}
-
 enum CourseStatus {
   ACTIVE
   INACTIVE
   COMING_SOON
 }
 
-// Участие сотрудников в курсах
-model UserCourse {
-  id           String        @id @default(cuid())
-  profileId    String
-  courseId     String
-  status       LearningStatus @default(PLANNED)
-  startDate    DateTime?
-  completedAt  DateTime?
-  xpAwarded    Int           @default(0)
-  progress     Int           @default(0) // 0-100%
-  
-  profile      Profile       @relation(fields: [profileId], references: [id])
-  course       Course        @relation(fields: [courseId], references: [id])
-  
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  
-  @@unique([profileId, courseId])
-}
-
 enum LearningStatus {
-  PLANNED      // Запланировано
-  IN_PROGRESS  // Проходит сейчас  
-  COMPLETED    // Завершен
-  DROPPED      // Бросил
-}
-
-// Менторские программы
-model MentorProgram {
-  id          String    @id @default(cuid())
-  title       String
-  description String    @db.Text
-  skills      String[]  // Какие навыки развивает
-  mentorId    String    // ID ментора
-  maxSlots    Int       @default(3) // Максимум учеников
-  status      String    @default("ACTIVE")
-  
-  participants UserMentorProgram[]
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-// Участие в менторских программах
-model UserMentorProgram {
-  id              String        @id @default(cuid())
-  profileId       String
-  programId       String
-  role            MentorRole    // MENTOR или MENTEE
-  status          String        @default("ACTIVE")
-  
-  profile         Profile       @relation(fields: [profileId], references: [id])
-  program         MentorProgram @relation(fields: [programId], references: [id])
-  
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
-  @@unique([profileId, programId])
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  DROPPED
 }
 
 enum MentorRole {
   MENTOR
   MENTEE
-}
-
-// T-Coins транзакции для отслеживания начислений/трат
-model TCoinTransaction {
-  id            String      @id @default(cuid())
-  profileId     String
-  amount        Int         // Положительное = заработано, отрицательное = потрачено
-  type          String      // 'earned' | 'spent'
-  source        String      // 'skill_added', 'quiz_completed', 'merch_purchase', etc.
-  description   String      // Человеко-читаемое описание
-  metadata      Json?       // Дополнительные данные (ID товара, детали и т.д.)
-  
-  profile       Profile     @relation(fields: [profileId], references: [id])
-  createdAt     DateTime    @default(now())
-}
-
-// Каталог призов для T-Coins магазина (простая модель для MVP)
-model RewardItem {
-  id            String      @id @default(cuid())
-  name          String      // "Фирменная кружка T1"
-  description   String      @db.Text
-  cost          Int         // В T-Coins
-  category      String      // "merch", "development", "privileges"
-  imageUrl      String?
-  inStock       Boolean     @default(true)
-  isActive      Boolean     @default(true)
-  
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-}
-
-// Лидерборды для геймификации
-model Leaderboard {
-  id            String      @id @default(cuid())
-  type          String      // 'tcoins_weekly', 'tcoins_monthly', 'tcoins_alltime', 'profile_strength', 'xp_monthly'
-  period        String      // 'weekly', 'monthly', 'all_time'  
-  data          Json        // Массив { profileId, userId, name, score, position, avatar }
-  generatedAt   DateTime    @default(now())
-  validUntil    DateTime?   // Когда истекает актуальность (для кэширования)
-  
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-}
-
-// Сообщества для networking
-model Community {
-  id            String      @id @default(cuid())
-  name          String      // "React Developers T1"
-  description   String      @db.Text
-  type          String      // 'skill', 'project', 'interest', 'department'
-  tags          String[]    // ['frontend', 'javascript', 'ui']
-  privacy       String      @default("PUBLIC") // PUBLIC, PRIVATE, INVITE_ONLY
-  imageUrl      String?     // Аватар сообщества
-  
-  creatorId     String
-  creator       Profile     @relation("CommunityCreator", fields: [creatorId], references: [id])
-  
-  members       CommunityMember[]
-  posts         CommunityPost[]
-  
-  memberCount   Int         @default(0)
-  isActive      Boolean     @default(true)
-  
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-}
-
-// Участники сообществ
-model CommunityMember {
-  id            String      @id @default(cuid())
-  communityId   String
-  profileId     String
-  role          String      @default("MEMBER") // ADMIN, MODERATOR, MEMBER
-  joinedAt      DateTime    @default(now())
-  
-  community     Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  profile       Profile     @relation(fields: [profileId], references: [id])
-  
-  @@unique([communityId, profileId])
-}
-
-// Посты в сообществах
-model CommunityPost {
-  id            String      @id @default(cuid())
-  communityId   String
-  authorId      String
-  title         String?
-  content       String      @db.Text
-  type          String      @default("TEXT") // TEXT, QUESTION, RESOURCE_SHARE, EVENT
-  
-  community     Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  author        Profile     @relation(fields: [authorId], references: [id])
-  likes         CommunityPostLike[]
-  comments      CommunityPostComment[]
-  
-  likesCount    Int         @default(0)
-  commentsCount Int         @default(0)
-  isPinned      Boolean     @default(false)
-  
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-}
-
-// Лайки постов
-model CommunityPostLike {
-  id            String      @id @default(cuid())
-  postId        String
-  profileId     String
-  
-  post          CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  profile       Profile     @relation(fields: [profileId], references: [id])
-  
-  createdAt     DateTime    @default(now())
-  @@unique([postId, profileId])
-}
-
-// Комментарии к постам
-model CommunityPostComment {
-  id            String      @id @default(cuid())
-  postId        String
-  authorId      String
-  content       String      @db.Text
-  
-  post          CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author        Profile     @relation(fields: [authorId], references: [id])
-  
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
 }

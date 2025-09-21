@@ -13,6 +13,15 @@ CREATE TYPE "public"."MessageRole" AS ENUM ('USER', 'ASSISTANT');
 -- CreateEnum
 CREATE TYPE "public"."JobStatus" AS ENUM ('OPEN', 'CLOSED', 'DRAFT');
 
+-- CreateEnum
+CREATE TYPE "public"."CourseStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'COMING_SOON');
+
+-- CreateEnum
+CREATE TYPE "public"."LearningStatus" AS ENUM ('PLANNED', 'IN_PROGRESS', 'COMPLETED', 'DROPPED');
+
+-- CreateEnum
+CREATE TYPE "public"."MentorRole" AS ENUM ('MENTOR', 'MENTEE');
+
 -- CreateTable
 CREATE TABLE "public"."User" (
     "id" TEXT NOT NULL,
@@ -74,6 +83,11 @@ CREATE TABLE "public"."Profile" (
     "profileStrength" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "tCoins" INTEGER NOT NULL DEFAULT 100,
+    "totalEarned" INTEGER NOT NULL DEFAULT 0,
+    "onboardingCompleted" BOOLEAN NOT NULL DEFAULT false,
+    "onboardingCompletedAt" TIMESTAMP(3),
+    "embeddingText" TEXT,
 
     CONSTRAINT "Profile_pkey" PRIMARY KEY ("id")
 );
@@ -226,6 +240,180 @@ CREATE TABLE "public"."JobOpening" (
     CONSTRAINT "JobOpening_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "public"."Course" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "category" TEXT NOT NULL,
+    "level" TEXT NOT NULL,
+    "duration" INTEGER,
+    "format" TEXT NOT NULL,
+    "skills" TEXT[],
+    "status" "public"."CourseStatus" NOT NULL DEFAULT 'ACTIVE',
+    "xpReward" INTEGER NOT NULL DEFAULT 50,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Course_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."UserCourse" (
+    "id" TEXT NOT NULL,
+    "profileId" TEXT NOT NULL,
+    "courseId" TEXT NOT NULL,
+    "status" "public"."LearningStatus" NOT NULL DEFAULT 'PLANNED',
+    "startDate" TIMESTAMP(3),
+    "completedAt" TIMESTAMP(3),
+    "xpAwarded" INTEGER NOT NULL DEFAULT 0,
+    "progress" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UserCourse_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."MentorProgram" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "skills" TEXT[],
+    "mentorId" TEXT NOT NULL,
+    "maxSlots" INTEGER NOT NULL DEFAULT 3,
+    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "MentorProgram_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."UserMentorProgram" (
+    "id" TEXT NOT NULL,
+    "profileId" TEXT NOT NULL,
+    "programId" TEXT NOT NULL,
+    "role" "public"."MentorRole" NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UserMentorProgram_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."TCoinTransaction" (
+    "id" TEXT NOT NULL,
+    "profileId" TEXT NOT NULL,
+    "amount" INTEGER NOT NULL,
+    "type" TEXT NOT NULL,
+    "source" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "TCoinTransaction_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."RewardItem" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "cost" INTEGER NOT NULL,
+    "category" TEXT NOT NULL,
+    "imageUrl" TEXT,
+    "inStock" BOOLEAN NOT NULL DEFAULT true,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RewardItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."Leaderboard" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "period" TEXT NOT NULL,
+    "data" JSONB NOT NULL,
+    "generatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "validUntil" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Leaderboard_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."Community" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "tags" TEXT[],
+    "privacy" TEXT NOT NULL DEFAULT 'PUBLIC',
+    "imageUrl" TEXT,
+    "creatorId" TEXT NOT NULL,
+    "memberCount" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Community_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."CommunityMember" (
+    "id" TEXT NOT NULL,
+    "communityId" TEXT NOT NULL,
+    "profileId" TEXT NOT NULL,
+    "role" TEXT NOT NULL DEFAULT 'MEMBER',
+    "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CommunityMember_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."CommunityPost" (
+    "id" TEXT NOT NULL,
+    "communityId" TEXT NOT NULL,
+    "authorId" TEXT NOT NULL,
+    "title" TEXT,
+    "content" TEXT NOT NULL,
+    "type" TEXT NOT NULL DEFAULT 'TEXT',
+    "likesCount" INTEGER NOT NULL DEFAULT 0,
+    "commentsCount" INTEGER NOT NULL DEFAULT 0,
+    "isPinned" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CommunityPost_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."CommunityPostLike" (
+    "id" TEXT NOT NULL,
+    "postId" TEXT NOT NULL,
+    "profileId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CommunityPostLike_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."CommunityPostComment" (
+    "id" TEXT NOT NULL,
+    "postId" TEXT NOT NULL,
+    "authorId" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CommunityPostComment_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
 
@@ -265,6 +453,18 @@ CREATE UNIQUE INDEX "UserBadge_profileId_badgeId_key" ON "public"."UserBadge"("p
 -- CreateIndex
 CREATE UNIQUE INDEX "ShortListCandidate_shortListId_profileId_key" ON "public"."ShortListCandidate"("shortListId", "profileId");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "UserCourse_profileId_courseId_key" ON "public"."UserCourse"("profileId", "courseId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserMentorProgram_profileId_programId_key" ON "public"."UserMentorProgram"("profileId", "programId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CommunityMember_communityId_profileId_key" ON "public"."CommunityMember"("communityId", "profileId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CommunityPostLike_postId_profileId_key" ON "public"."CommunityPostLike"("postId", "profileId");
+
 -- AddForeignKey
 ALTER TABLE "public"."Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -287,10 +487,10 @@ ALTER TABLE "public"."UserProject" ADD CONSTRAINT "UserProject_profileId_fkey" F
 ALTER TABLE "public"."UserProject" ADD CONSTRAINT "UserProject_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "public"."Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UserBadge" ADD CONSTRAINT "UserBadge_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."UserBadge" ADD CONSTRAINT "UserBadge_badgeId_fkey" FOREIGN KEY ("badgeId") REFERENCES "public"."Badge"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UserBadge" ADD CONSTRAINT "UserBadge_badgeId_fkey" FOREIGN KEY ("badgeId") REFERENCES "public"."Badge"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."UserBadge" ADD CONSTRAINT "UserBadge_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."CareerGoal" ADD CONSTRAINT "CareerGoal_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -302,7 +502,49 @@ ALTER TABLE "public"."ChatSession" ADD CONSTRAINT "ChatSession_profileId_fkey" F
 ALTER TABLE "public"."ChatMessage" ADD CONSTRAINT "ChatMessage_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "public"."ChatSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."ShortListCandidate" ADD CONSTRAINT "ShortListCandidate_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."ShortListCandidate" ADD CONSTRAINT "ShortListCandidate_shortListId_fkey" FOREIGN KEY ("shortListId") REFERENCES "public"."ShortList"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."ShortListCandidate" ADD CONSTRAINT "ShortListCandidate_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."UserCourse" ADD CONSTRAINT "UserCourse_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "public"."Course"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."UserCourse" ADD CONSTRAINT "UserCourse_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."UserMentorProgram" ADD CONSTRAINT "UserMentorProgram_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."UserMentorProgram" ADD CONSTRAINT "UserMentorProgram_programId_fkey" FOREIGN KEY ("programId") REFERENCES "public"."MentorProgram"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."TCoinTransaction" ADD CONSTRAINT "TCoinTransaction_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Community" ADD CONSTRAINT "Community_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CommunityMember" ADD CONSTRAINT "CommunityMember_communityId_fkey" FOREIGN KEY ("communityId") REFERENCES "public"."Community"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CommunityMember" ADD CONSTRAINT "CommunityMember_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CommunityPost" ADD CONSTRAINT "CommunityPost_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CommunityPost" ADD CONSTRAINT "CommunityPost_communityId_fkey" FOREIGN KEY ("communityId") REFERENCES "public"."Community"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CommunityPostLike" ADD CONSTRAINT "CommunityPostLike_postId_fkey" FOREIGN KEY ("postId") REFERENCES "public"."CommunityPost"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CommunityPostLike" ADD CONSTRAINT "CommunityPostLike_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CommunityPostComment" ADD CONSTRAINT "CommunityPostComment_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "public"."Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CommunityPostComment" ADD CONSTRAINT "CommunityPostComment_postId_fkey" FOREIGN KEY ("postId") REFERENCES "public"."CommunityPost"("id") ON DELETE CASCADE ON UPDATE CASCADE;

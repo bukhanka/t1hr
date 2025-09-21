@@ -40,7 +40,10 @@ help:
 	@echo ""
 	@echo "Utilities:"
 	@echo "  logs          - Show application logs"
-	@echo "  db-migrate    - Run database migrations"
+	@echo "  db-migrate    - Run database migrations + pgvector setup"
+	@echo "  db-setup-pgvector - Setup pgvector extensions and indexes"
+	@echo "  db-test-pgvector  - Test pgvector functionality"
+	@echo "  db-init-embeddings - Initialize embeddings for profiles"
 	@echo "  clean         - Remove all containers and volumes"
 
 # Check Docker availability
@@ -118,6 +121,8 @@ logs-db: check-docker
 db-migrate: check-docker
 	@echo "Running database migrations..."
 	$(DOCKER_COMPOSE) exec app npx prisma migrate deploy
+	@echo "Setting up pgvector extensions..."
+	make db-setup-pgvector
 
 db-seed: check-docker
 	@echo "Seeding database..."
@@ -126,6 +131,34 @@ db-seed: check-docker
 db-reset: check-docker
 	@echo "Resetting database..."
 	$(DOCKER_COMPOSE) exec app npx prisma migrate reset --force
+	@echo "Setting up pgvector after reset..."
+	make db-setup-pgvector
+
+# pgvector specific commands
+db-setup-pgvector: check-docker
+	@echo "🔧 Setting up pgvector extensions and indexes..."
+	$(DOCKER_COMPOSE) exec postgres psql -U postgres -d scibox_talent_db -f /scripts/post-migration.sql || \
+	docker cp ./scripts/post-migration.sql scibox-talent-db:/tmp/ && \
+	$(DOCKER_COMPOSE) exec postgres psql -U postgres -d scibox_talent_db -f /tmp/post-migration.sql
+	@echo "✅ pgvector setup completed!"
+
+db-test-pgvector: check-docker
+	@echo "🧪 Testing pgvector functionality..."
+	$(DOCKER_COMPOSE) exec postgres psql -U postgres -d scibox_talent_db -c "SELECT get_vector_index_stats();"
+	@echo "✅ pgvector test completed!"
+
+db-init-embeddings: check-docker
+	@echo "🚀 Initializing embeddings for existing profiles..."
+	$(DOCKER_COMPOSE) exec app node -e "
+	const { VectorizationService } = require('./dist/src/lib/vectorization.js');
+	VectorizationService.rebuildAllEmbeddings().then(() => {
+		console.log('✅ Embeddings initialization completed!');
+		process.exit(0);
+	}).catch(err => {
+		console.error('❌ Error:', err);
+		process.exit(1);
+	});
+	"
 
 # Cleanup commands
 clean: check-docker

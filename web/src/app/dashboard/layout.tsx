@@ -7,6 +7,7 @@ import { NavigatorProvider } from "@/providers/navigator-provider"
 import { NavigatorFAB } from "@/components/navigator-fab"
 import { NavigatorModal } from "@/components/navigator-modal"
 import { useNavigator } from "@/providers/navigator-provider"
+import { AuthErrorHandler } from "@/components/auth-error-handler"
 
 function DashboardContent({
   children,
@@ -56,9 +57,11 @@ export default function DashboardLayout({
 
   return (
     <NavigatorProvider>
-      <DashboardContent user={session.user}>
-        {children}
-      </DashboardContent>
+      <AuthErrorHandler>
+        <DashboardContent user={session.user}>
+          {children}
+        </DashboardContent>
+      </AuthErrorHandler>
     </NavigatorProvider>
   )
 }

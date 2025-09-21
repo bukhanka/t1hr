@@ -65,25 +65,25 @@ export async function GET() {
       where: { user: { role: 'EMPLOYEE' } }
     })
 
-    // Временно закомментировано из-за отсутствия поля embeddingText
-    // const profilesWithEmbeddings = await prisma.profile.count({
-    //   where: { 
-    //     user: { role: 'EMPLOYEE' },
-    //     embeddingText: { not: null }
-    //   }
-    // })
+    // Проверяем реальное покрытие эмбеддингами (используем raw SQL для pgvector)
+    const profilesWithEmbeddingsResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*) as count
+      FROM "Profile" p
+      JOIN "User" u ON p."userId" = u.id
+      WHERE u.role = 'EMPLOYEE' AND p.embedding IS NOT NULL
+    `
+    const profilesWithEmbeddings = Number(profilesWithEmbeddingsResult[0]?.count || 0)
 
-    // const coverage = totalProfiles > 0 
-    //   ? Math.round((profilesWithEmbeddings / totalProfiles) * 100)
-    //   : 0
-    const coverage = 0 // Временно установлено в 0
+    const coverage = totalProfiles > 0 
+      ? Math.round((profilesWithEmbeddings / totalProfiles) * 100)
+      : 0
 
     return NextResponse.json({
       totalProfiles,
-      profilesWithEmbeddings: 0, // Временно установлено в 0
+      profilesWithEmbeddings,
       coveragePercentage: coverage,
-      status: 'not_started', // Временно установлено, так как coverage = 0
-      readyForSemanticSearch: coverage >= 50
+      status: coverage === 0 ? 'not_started' : coverage < 100 ? 'in_progress' : 'completed',
+      readyForSemanticSearch: coverage >= 20 // Понизили порог для демо
     })
 
   } catch (error) {

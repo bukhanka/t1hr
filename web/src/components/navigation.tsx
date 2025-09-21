@@ -21,6 +21,7 @@ import {
   LogOut 
 } from "lucide-react"
 import { TCoinBalance } from "@/components/tcoin-balance"
+import { ClearAuthButton } from "@/components/clear-auth-button"
 
 interface NavigationProps {
   user: {
@@ -125,6 +126,12 @@ export function Navigation({ user }: NavigationProps) {
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
                     </p>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <div className="px-2 py-1">
+                    <ClearAuthButton />
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

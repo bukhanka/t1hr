@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { GamificationService } from '@/lib/gamification'
+import { AutoEmbeddingService } from '@/lib/auto-embeddings'
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,6 +77,9 @@ export async function POST(request: NextRequest) {
         tCoins: profile.tCoins + 200 // Бонус за завершение онбординга
       }
     })
+
+    // 🚀 Автоматически создаем эмбеддинг для завершенного профиля
+    AutoEmbeddingService.scheduleEmbeddingUpdate(updatedProfile.id, 5000)
 
     // Начисляем дополнительные XP за завершение онбординга
     await GamificationService.awardXP(session.user.id, 'PROFILE_UPDATED', 1)
