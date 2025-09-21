@@ -1,0 +1,99 @@
+{
+  "categories": {
+    "merch": "Мерч T1",
+    "development": "Развитие",
+    "privileges": "Привилегии"
+  },
+  "items": [
+    {
+      "id": "mug-t1",
+      "name": "Фирменная кружка T1",
+      "description": "Стильная керамическая кружка с логотипом T1. Объем 350мл, подходит для кофе и чая.",
+      "cost": 300,
+      "category": "merch",
+      "imageUrl": "/rewards/mug-t1.png",
+      "inStock": true
+    },
+    {
+      "id": "hoodie-t1",
+      "name": "Толстовка T1",
+      "description": "Комфортная толстовка с капюшоном и логотипом T1. Размеры S-XXL.",
+      "cost": 800,
+      "category": "merch",
+      "imageUrl": "/rewards/hoodie-t1.png",
+      "inStock": true
+    },
+    {
+      "id": "stickers-pack",
+      "name": "Стикерпак T1",
+      "description": "Набор из 10 стикеров с логотипами и мотивирующими надписями.",
+      "cost": 150,
+      "category": "merch",
+      "imageUrl": "/rewards/stickers.png",
+      "inStock": true
+    },
+    {
+      "id": "premium-course",
+      "name": "Доступ к премиум курсу",
+      "description": "Месячный доступ к любому курсу из премиум каталога компании.",
+      "cost": 500,
+      "category": "development",
+      "imageUrl": "/rewards/premium-course.png",
+      "inStock": true
+    },
+    {
+      "id": "mentor-session",
+      "name": "1-на-1 сессия с ментором",
+      "description": "Персональная часовая сессия с экспертом по выбранной теме.",
+      "cost": 400,
+      "category": "development", 
+      "imageUrl": "/rewards/mentor-session.png",
+      "inStock": true
+    },
+    {
+      "id": "hackathon-priority",
+      "name": "Приоритетное участие в хакатоне",
+      "description": "Гарантированное место в следующем внутреннем хакатоне компании.",
+      "cost": 600,
+      "category": "development",
+      "imageUrl": "/rewards/hackathon.png",
+      "inStock": true
+    },
+    {
+      "id": "parking-month",
+      "name": "Именная парковка на месяц",
+      "description": "Персональное парковочное место с вашим именем на месяц.",
+      "cost": 250,
+      "category": "privileges",
+      "imageUrl": "/rewards/parking.png",
+      "inStock": true
+    },
+    {
+      "id": "course-priority",
+      "name": "Приоритет в очереди на курсы",
+      "description": "Возможность записаться на популярные курсы без очереди на 3 месяца.",
+      "cost": 200,
+      "category": "privileges",
+      "imageUrl": "/rewards/priority.png",
+      "inStock": true
+    },
+    {
+      "id": "custom-status",
+      "name": "Кастомный статус в профиле",
+      "description": "Возможность установить персональный статус в профиле на месяц.",
+      "cost": 100,
+      "category": "privileges",
+      "imageUrl": "/rewards/status.png",
+      "inStock": true
+    },
+    {
+      "id": "late-start",
+      "name": "Поздний старт (1 день)",
+      "description": "Возможность один раз начать рабочий день на час позже без согласований.",
+      "cost": 180,
+      "category": "privileges",
+      "imageUrl": "/rewards/late-start.png",
+      "inStock": true
+    }
+  ]
+}

@@ -87,6 +87,10 @@ model Profile {
   xp              Int         @default(0)
   level           Int         @default(1)
   profileStrength Int         @default(0) // "Сила профиля" от 0 до 100
+  
+  // T-Coins система (внутренняя валюта)
+  tCoins          Int         @default(100)  // Стартовые T-Coins
+  totalEarned     Int         @default(0)    // Всего заработано (для статистики)
 
   // Вектор для семантического поиска. Модель bge-m3 использует 1024 измерения  
   // embedding       Unsupported("vector(1024)")?  // Временно закомментировано
@@ -99,6 +103,9 @@ model Profile {
   badges            UserBadge[]
   chatSessions      ChatSession[]
   shortListEntries  ShortListCandidate[]
+  userCourses       UserCourse[]
+  mentorPrograms    UserMentorProgram[]
+  tcoinTransactions TCoinTransaction[]
 
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -297,4 +304,123 @@ enum JobStatus {
   OPEN
   CLOSED
   DRAFT
+}
+
+// Курсы и образовательные программы  
+model Course {
+  id          String        @id @default(cuid())
+  title       String
+  description String        @db.Text
+  category    String        // "Техническое", "Soft Skills", "Менеджмент"
+  level       String        // "Junior", "Middle", "Senior", "All"
+  duration    Int?          // В часах
+  format      String        // "Online", "Offline", "Hybrid"
+  skills      String[]      // Какие навыки развивает
+  status      CourseStatus  @default(ACTIVE)
+  xpReward    Int           @default(50) // XP за завершение курса
+  
+  userCourses UserCourse[]
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum CourseStatus {
+  ACTIVE
+  INACTIVE
+  COMING_SOON
+}
+
+// Участие сотрудников в курсах
+model UserCourse {
+  id           String        @id @default(cuid())
+  profileId    String
+  courseId     String
+  status       LearningStatus @default(PLANNED)
+  startDate    DateTime?
+  completedAt  DateTime?
+  xpAwarded    Int           @default(0)
+  progress     Int           @default(0) // 0-100%
+  
+  profile      Profile       @relation(fields: [profileId], references: [id])
+  course       Course        @relation(fields: [courseId], references: [id])
+  
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  @@unique([profileId, courseId])
+}
+
+enum LearningStatus {
+  PLANNED      // Запланировано
+  IN_PROGRESS  // Проходит сейчас  
+  COMPLETED    // Завершен
+  DROPPED      // Бросил
+}
+
+// Менторские программы
+model MentorProgram {
+  id          String    @id @default(cuid())
+  title       String
+  description String    @db.Text
+  skills      String[]  // Какие навыки развивает
+  mentorId    String    // ID ментора
+  maxSlots    Int       @default(3) // Максимум учеников
+  status      String    @default("ACTIVE")
+  
+  participants UserMentorProgram[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Участие в менторских программах
+model UserMentorProgram {
+  id              String        @id @default(cuid())
+  profileId       String
+  programId       String
+  role            MentorRole    // MENTOR или MENTEE
+  status          String        @default("ACTIVE")
+  
+  profile         Profile       @relation(fields: [profileId], references: [id])
+  program         MentorProgram @relation(fields: [programId], references: [id])
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@unique([profileId, programId])
+}
+
+enum MentorRole {
+  MENTOR
+  MENTEE
+}
+
+// T-Coins транзакции для отслеживания начислений/трат
+model TCoinTransaction {
+  id            String      @id @default(cuid())
+  profileId     String
+  amount        Int         // Положительное = заработано, отрицательное = потрачено
+  type          String      // 'earned' | 'spent'
+  source        String      // 'skill_added', 'quiz_completed', 'merch_purchase', etc.
+  description   String      // Человеко-читаемое описание
+  metadata      Json?       // Дополнительные данные (ID товара, детали и т.д.)
+  
+  profile       Profile     @relation(fields: [profileId], references: [id])
+  createdAt     DateTime    @default(now())
+}
+
+// Каталог призов для T-Coins магазина (простая модель для MVP)
+model RewardItem {
+  id            String      @id @default(cuid())
+  name          String      // "Фирменная кружка T1"
+  description   String      @db.Text
+  cost          Int         // В T-Coins
+  category      String      // "merch", "development", "privileges"
+  imageUrl      String?
+  inStock       Boolean     @default(true)
+  isActive      Boolean     @default(true)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }

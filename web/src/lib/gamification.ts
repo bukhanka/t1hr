@@ -23,6 +23,20 @@ const XP_REWARDS: XPRewards = {
   CHAT_WITH_AI: 10
 }
 
+// T-Coins награды (параллельно с XP)
+type TCoinRewards = Record<GamificationEvent, number>
+
+const TCOIN_REWARDS: TCoinRewards = {
+  PROFILE_CREATED: 100,          // Больше T-Coins для мотивации
+  SKILL_ADDED: 25,
+  SKILL_VERIFIED: 50,            
+  PROJECT_ADDED: 75,
+  PROJECT_ACHIEVEMENT_ADDED: 100,
+  CAREER_GOAL_SET: 50,
+  PROFILE_UPDATED: 15,
+  CHAT_WITH_AI: 5
+}
+
 // Таблица уровней и требований XP
 const LEVEL_REQUIREMENTS = [
   { level: 1, minXp: 0, title: 'Newcomer' },
@@ -46,18 +60,34 @@ export class GamificationService {
       }
 
       const xpReward = Math.floor(XP_REWARDS[event] * multiplier)
+      const tcoinReward = Math.floor(TCOIN_REWARDS[event] * multiplier)
       const newXp = profile.xp + xpReward
+      const newTCoins = profile.tCoins + tcoinReward
+      const newTotalEarned = profile.totalEarned + tcoinReward
       
       // Вычисляем новый уровень
       const newLevel = this.calculateLevel(newXp)
       const oldLevel = profile.level
 
-      // Обновляем профиль
+      // Обновляем профиль (XP и T-Coins одновременно)
       const updatedProfile = await prisma.profile.update({
         where: { userId },
         data: {
           xp: newXp,
-          level: newLevel
+          level: newLevel,
+          tCoins: newTCoins,
+          totalEarned: newTotalEarned
+        }
+      })
+
+      // Создаем запись транзакции T-Coins
+      await prisma.tCoinTransaction.create({
+        data: {
+          profileId: profile.id,
+          amount: tcoinReward,
+          type: 'earned',
+          source: event.toLowerCase(),
+          description: this.getEventDescription(event, tcoinReward)
         }
       })
 
@@ -69,7 +99,9 @@ export class GamificationService {
 
       return {
         xpAwarded: xpReward,
+        tcoinsAwarded: tcoinReward,
         totalXp: newXp,
+        totalTCoins: newTCoins,
         newLevel,
         levelUp,
         event
@@ -89,6 +121,20 @@ export class GamificationService {
       }
     }
     return 1
+  }
+
+  static getEventDescription(event: GamificationEvent, amount: number): string {
+    const descriptions = {
+      'PROFILE_CREATED': `Создание профиля (+${amount} T-Coins)`,
+      'SKILL_ADDED': `Добавление навыка (+${amount} T-Coins)`,
+      'SKILL_VERIFIED': `Подтверждение навыка (+${amount} T-Coins)`,
+      'PROJECT_ADDED': `Добавление проекта (+${amount} T-Coins)`,
+      'PROJECT_ACHIEVEMENT_ADDED': `Описание достижений (+${amount} T-Coins)`,
+      'CAREER_GOAL_SET': `Постановка карьерной цели (+${amount} T-Coins)`,
+      'PROFILE_UPDATED': `Обновление профиля (+${amount} T-Coins)`,
+      'CHAT_WITH_AI': `Общение с ИИ-навигатором (+${amount} T-Coins)`
+    }
+    return descriptions[event] || `Активность: ${event} (+${amount} T-Coins)`
   }
 
   static getLevelInfo(level: number) {
@@ -251,19 +297,19 @@ export class GamificationService {
     
     // Если нет навыков - добавить навыки
     if (profile.userSkills.length === 0) {
-      return "Добавьте ваши навыки в профиль (+25 XP за каждый)"
+      return "Добавьте ваши навыки в профиль (+25 XP, +25 T-Coins за каждый)"
     }
 
     // Если есть проекты без достижений - заполнить достижения
     const projectsWithoutAchievements = profile.userProjects.filter(p => !p.achievements)
     if (projectsWithoutAchievements.length > 0) {
       const project = projectsWithoutAchievements[0]
-      return `Опишите достижения в проекте "${project.project.name}" (+150 XP)`
+      return `Опишите достижения в проекте "${project.project.name}" (+150 XP, +100 T-Coins)`
     }
 
     // Если нет карьерных целей - добавить их
     if (profile.careerGoals.length === 0) {
-      return "Укажите ваши карьерные цели (+50 XP)"
+      return "Укажите ваши карьерные цели (+50 XP, +50 T-Coins)"
     }
 
     // Если профиль слабо заполнен
@@ -273,9 +319,101 @@ export class GamificationService {
 
     // Если мало навыков для полиглота
     if (profile.userSkills.length < 5) {
-      return `Добавьте еще ${5 - profile.userSkills.length} навыка для получения бейджа 'Полиглот'`
+      return `Добавьте еще ${5 - profile.userSkills.length} навыка для получения бейджа 'Полиглот' (+25 T-Coins за навык)`
     }
 
-    return "Пообщайтесь с ИИ-консультантом для персональных рекомендаций (+10 XP)"
+    return "Пообщайтесь с ИИ-консультантом для персональных рекомендаций (+10 XP, +5 T-Coins)"
+  }
+
+  // T-Coins методы
+  static async spendTCoins(userId: string, amount: number, purpose: string, description: string, metadata?: any) {
+    try {
+      const profile = await prisma.profile.findUnique({
+        where: { userId }
+      })
+
+      if (!profile) {
+        return { success: false, error: 'Профиль не найден' }
+      }
+
+      if (profile.tCoins < amount) {
+        return { success: false, error: 'Недостаточно T-Coins' }
+      }
+
+      // Обновляем баланс
+      const updatedProfile = await prisma.profile.update({
+        where: { userId },
+        data: {
+          tCoins: profile.tCoins - amount
+        }
+      })
+
+      // Создаем запись транзакции
+      await prisma.tCoinTransaction.create({
+        data: {
+          profileId: profile.id,
+          amount: -amount,
+          type: 'spent',
+          source: purpose,
+          description,
+          metadata: metadata ? JSON.stringify(metadata) : null
+        }
+      })
+
+      return { 
+        success: true, 
+        newBalance: updatedProfile.tCoins,
+        amountSpent: amount
+      }
+    } catch (error) {
+      console.error('Ошибка при трате T-Coins:', error)
+      return { success: false, error: 'Ошибка сервера' }
+    }
+  }
+
+  static async getTCoinBalance(userId: string) {
+    try {
+      const profile = await prisma.profile.findUnique({
+        where: { userId },
+        select: {
+          tCoins: true,
+          totalEarned: true
+        }
+      })
+
+      if (!profile) {
+        return null
+      }
+
+      return {
+        current: profile.tCoins,
+        totalEarned: profile.totalEarned
+      }
+    } catch (error) {
+      console.error('Ошибка при получении баланса T-Coins:', error)
+      return null
+    }
+  }
+
+  static async getTCoinHistory(userId: string, limit: number = 10) {
+    try {
+      const profile = await prisma.profile.findUnique({
+        where: { userId },
+        select: { id: true }
+      })
+
+      if (!profile) return []
+
+      const transactions = await prisma.tCoinTransaction.findMany({
+        where: { profileId: profile.id },
+        orderBy: { createdAt: 'desc' },
+        take: limit
+      })
+
+      return transactions
+    } catch (error) {
+      console.error('Ошибка при получении истории T-Coins:', error)
+      return []
+    }
   }
 }

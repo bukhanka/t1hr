@@ -28,6 +28,9 @@ function getContextualIntro(triggerSource?: string) {
 }
 
 async function buildSystemPrompt(userId: string, context?: { triggerSource?: string }) {
+  console.log('🧠 Building enhanced system prompt with corporate data...')
+  
+  // Загружаем профиль пользователя
   const profile = await prisma.profile.findUnique({
     where: { userId },
     include: {
@@ -48,6 +51,86 @@ async function buildSystemPrompt(userId: string, context?: { triggerSource?: str
     return "Ты - Навигатор, внутренний карьерный ИИ-консультант в компании T1. Помогай пользователю с карьерными вопросами."
   }
 
+  // КОРПОРАТИВНЫЕ ДАННЫЕ: Загружаем релевантные возможности с ограничениями
+  console.log('🏢 Loading corporate opportunities...')
+  
+  // Активные проекты (ограничиваем до 5)
+  const availableProjects = await prisma.project.findMany({
+    where: { status: 'ACTIVE' },
+    select: { 
+      name: true, 
+      description: true 
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 5
+  })
+  
+  // Открытые вакансии (приоритет по отделу пользователя)
+  const openJobs = await prisma.jobOpening.findMany({
+    where: { 
+      status: 'OPEN',
+      ...(profile.department ? {
+        OR: [
+          { department: profile.department },
+          { department: { contains: 'IT' } } 
+        ]
+      } : {})
+    },
+    select: { 
+      title: true, 
+      department: true, 
+      level: true, 
+      requirements: true 
+    },
+    take: 4
+  })
+  
+  // Релевантные курсы (на основе навыков которые хочет изучить)
+  const wantToLearnSkillNames = profile.userSkills
+    .filter(us => us.status === 'WANTS_TO_LEARN')
+    .map(us => us.skill.name.toLowerCase())
+    
+  const availableCourses = await prisma.course.findMany({
+    where: { 
+      status: 'ACTIVE',
+      ...(wantToLearnSkillNames.length > 0 ? {
+        OR: wantToLearnSkillNames.flatMap(skillName => [
+          { skills: { has: skillName } },
+          { title: { contains: skillName, mode: 'insensitive' } }
+        ])
+      } : {})
+    },
+    select: { 
+      title: true, 
+      category: true, 
+      level: true, 
+      skills: true, 
+      xpReward: true 
+    },
+    take: 5
+  })
+  
+  // Менторские программы 
+  const mentorPrograms = await prisma.mentorProgram.findMany({
+    where: { 
+      status: 'ACTIVE',
+      ...(wantToLearnSkillNames.length > 0 ? {
+        skills: {
+          hasSome: wantToLearnSkillNames
+        }
+      } : {})
+    },
+    select: { 
+      title: true, 
+      description: true, 
+      skills: true 
+    },
+    take: 3
+  })
+  
+  console.log(`📊 Loaded: ${availableProjects.length} projects, ${openJobs.length} jobs, ${availableCourses.length} courses, ${mentorPrograms.length} mentor programs`)
+  
+  // ЛИЧНЫЕ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ  
   const currentSkills = profile.userSkills
     .filter(us => us.status === 'USING')
     .map(us => `${us.skill.name} (уровень ${us.level}/5)`)
@@ -82,8 +165,8 @@ ${contextualIntro}
 ВАЖНЫЕ ПРИНЦИПЫ:
 - Ты дружелюбен, мотивирующий, но профессионален
 - Всегда основывай советы на реальных данных профиля сотрудника
-- Не выдумывай внешние курсы или несуществующие возможности
-- Предлагай только внутренние возможности развития
+- Рекомендуй ТОЛЬКО конкретные возможности из списков ниже
+- НЕ выдумывай несуществующие проекты, курсы или вакансии
 - Мотивируй заполнять профиль для получения XP и бейджей
 - Давай конкретные, практичные советы
 
@@ -106,11 +189,33 @@ ${contextualIntro}
 НЕДАВНИЕ ДОСТИЖЕНИЯ:
 - Бейджи: ${recentBadges || 'нет'}
 
+🏢 ДОСТУПНЫЕ ВОЗМОЖНОСТИ В КОМПАНИИ:
+
+📋 АКТИВНЫЕ ПРОЕКТЫ (рекомендуй эти конкретные проекты):
+${availableProjects.map(p => `- "${p.name}": ${p.description || 'проект для развития навыков'}`).join('\n')}
+
+💼 ОТКРЫТЫЕ ВАКАНСИИ (рекомендуй для карьерного роста):
+${openJobs.map(j => `- "${j.title}" (${j.department}, ${j.level}) - требует: ${j.requirements.join(', ')}`).join('\n')}
+
+📚 ДОСТУПНЫЕ КУРСЫ (рекомендуй для изучения навыков):
+${availableCourses.map(c => `- "${c.title}" (${c.category}, ${c.level}) - развивает: ${c.skills.join(', ')} [+${c.xpReward} XP]`).join('\n')}
+
+👥 МЕНТОРСКИЕ ПРОГРАММЫ:
+${mentorPrograms.map(m => `- "${m.title}": ${m.description} (навыки: ${m.skills.join(', ')})`).join('\n')}
+
+СПОСОБЫ ПОЛУЧЕНИЯ XP:
+- Заполнение достижений в проектах: +100-200 XP
+- Завершение курса: +${availableCourses[0]?.xpReward || 50} XP
+- Получение подтверждения навыка: +50 XP
+- Добавление нового навыка: +25 XP
+- Обновление карьерных целей: +30 XP
+
 РЕКОМЕНДАЦИИ ДЛЯ ОТВЕТОВ:
 1. Если профиль заполнен слабо (< 60%) - мотивируй его дополнить
 2. Если есть проекты без описания достижений - предлагай их заполнить
-3. Если есть цели обучения - предлагай внутренние проекты с этими технологиями
-4. Всегда упоминай конкретные возможности получения XP за действия
+3. Рекомендуй КОНКРЕТНЫЕ проекты и курсы из списков выше
+4. Упоминай точные суммы XP за действия
+5. Предлагай конкретные вакансии для роста
 
 Отвечай на русском языке, используй имя пользователя из контекста диалога.`
 }
@@ -361,20 +466,20 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Ошибка в AI chat API:', error)
-    console.error('❌ Error type:', (error as Error)?.constructor?.name)
-    console.error('❌ Error message:', (error as Error)?.message)
-    console.error('❌ Stack trace:', (error as Error)?.stack)
+    console.error('❌ Error type:', error?.constructor?.name)
+    console.error('❌ Error message:', error?.message)
+    console.error('❌ Stack trace:', error?.stack)
     
     // Если это ошибка валидации или клиентская ошибка, возвращаем 400
-    if ((error as Error)?.message?.includes('validation') || (error as Error)?.message?.includes('invalid')) {
+    if (error?.message?.includes('validation') || error?.message?.includes('invalid')) {
       return NextResponse.json(
-        { error: 'Ошибка валидации данных', details: (error as Error).message },
+        { error: 'Ошибка валидации данных', details: error.message },
         { status: 400 }
       )
     }
     
     return NextResponse.json(
-      { error: 'Внутренняя ошибка сервера', details: (error as Error)?.message || 'Unknown error' },
+      { error: 'Внутренняя ошибка сервера', details: error?.message || 'Unknown error' },
       { status: 500 }
     )
   }

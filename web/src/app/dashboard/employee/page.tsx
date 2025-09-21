@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { NavigatorCard } from "@/components/navigator-card"
+import { OpportunityPreviewCard } from "@/components/opportunity-preview-card"
 import { GamificationService } from "@/lib/gamification"
 import Link from "next/link"
 import { 
@@ -18,8 +19,9 @@ import {
   Award,
   Book,
   Zap,
+  Users,
   Calendar,
-  Users
+  Coins
 } from "lucide-react"
 
 export default async function EmployeeDashboard() {
@@ -48,6 +50,12 @@ export default async function EmployeeDashboard() {
         include: { badge: true },
         orderBy: { awardedAt: 'desc' },
         take: 5
+      },
+      userCourses: {
+        include: { course: true }
+      },
+      mentorPrograms: {
+        include: { program: true }
       }
     }
   })
@@ -97,8 +105,7 @@ export default async function EmployeeDashboard() {
   const levelInfo = GamificationService.getLevelInfo(profile.level)
   const nextBestAction = await GamificationService.getNextBestAction(session.user.id)
 
-  // Рекомендуемые проекты (простая логика на основе навыков)
-  const userSkillNames = profile.userSkills.map(us => us.skill.name.toLowerCase())
+  // Рекомендуемые проекты
   const recommendedProjects = await prisma.project.findMany({
     where: {
       status: 'ACTIVE',
@@ -111,6 +118,38 @@ export default async function EmployeeDashboard() {
       }
     },
     take: 3
+  })
+
+  // Рекомендуемые курсы для превью
+  const enrolledCourseIds = profile.userCourses?.map(uc => uc.courseId) || []
+  const recommendedCourses = await prisma.course.findMany({
+    where: {
+      status: 'ACTIVE',
+      NOT: {
+        id: { in: enrolledCourseIds }
+      }
+    },
+    take: 2
+  })
+
+  // Менторские программы для превью
+  const participatingProgramIds = profile.mentorPrograms?.map(ump => ump.programId) || []
+  const recommendedMentorPrograms = await prisma.mentorProgram.findMany({
+    where: {
+      status: 'ACTIVE',
+      NOT: {
+        id: { in: participatingProgramIds }
+      }
+    },
+    take: 2
+  })
+
+  // Вакансии для превью
+  const jobOpenings = await prisma.jobOpening.findMany({
+    where: {
+      status: 'OPEN'
+    },
+    take: 2
   })
 
   // Статистика для прогресса
@@ -130,12 +169,20 @@ export default async function EmployeeDashboard() {
             Добро пожаловать, {session.user.name}! Управляйте своим профессиональным развитием.
           </p>
         </div>
-        <Link href="/dashboard/employee/profile">
-          <Button>
-            <Users className="mr-2 h-4 w-4" />
-            Мастерская Карьеры
-          </Button>
-        </Link>
+        <div className="flex space-x-3">
+          <Link href="/dashboard/employee/opportunities">
+            <Button variant="outline">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Возможности
+            </Button>
+          </Link>
+          <Link href="/dashboard/employee/profile">
+            <Button>
+              <Users className="mr-2 h-4 w-4" />
+              Мастерская Карьеры
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -202,7 +249,7 @@ export default async function EmployeeDashboard() {
       </div>
 
       {/* Статистика профиля */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -250,90 +297,114 @@ export default async function EmployeeDashboard() {
             </div>
           </CardContent>
         </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Coins className="h-4 w-4 text-yellow-600" />
+              <div>
+                <p className="text-2xl font-bold text-yellow-700">{profile.tCoins}</p>
+                <p className="text-xs text-muted-foreground">T-Coins</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Рекомендованные возможности */}
-      <div>
-        <h2 className="text-2xl font-bold mb-4">Рекомендованные Возможности</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {recommendedProjects.map((project) => (
-            <Card key={project.id}>
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <Book className="h-4 w-4 text-blue-600" />
-                  <Badge variant="secondary">Проект</Badge>
-                </div>
-                <CardTitle className="text-lg">{project.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">
-                  {project.description || 'Интересный проект для развития ваших навыков.'}
-                </p>
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline">
-                    Узнать больше
-                  </Button>
-                  <Button size="sm">
-                    Интересует
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      {/* Рекомендованные возможности - краткий превью */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              <CardTitle>Рекомендованные Возможности</CardTitle>
+            </div>
+            <Link href="/dashboard/employee/opportunities">
+              <Button variant="outline" size="sm">
+                Смотреть все
+              </Button>
+            </Link>
+          </div>
+          <CardDescription>
+            Персонализированные предложения для вашего карьерного развития
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-2">
+            {/* Проекты */}
+            {recommendedProjects.slice(0, 1).map((project) => (
+              <OpportunityPreviewCard
+                key={project.id}
+                opportunity={{
+                  id: project.id,
+                  title: project.name,
+                  description: project.description || 'Интересный проект для применения навыков',
+                  type: 'project'
+                }}
+              />
+            ))}
 
-          {/* Пример роли */}
-          {profile.level >= 2 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <Award className="h-4 w-4 text-purple-600" />
-                  <Badge variant="secondary">Роль</Badge>
-                </div>
-                <CardTitle className="text-lg">Senior {profile.jobTitle || 'Developer'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Ваш опыт и навыки делают вас сильным кандидатом для повышения до Senior уровня.
-                </p>
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline">
-                    Требования
-                  </Button>
-                  <Button size="sm">
-                    Обсудить
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+            {/* Курсы */}
+            {recommendedCourses.slice(0, 1).map((course) => (
+              <OpportunityPreviewCard
+                key={course.id}
+                opportunity={{
+                  id: course.id,
+                  title: course.title,
+                  description: course.description,
+                  type: 'course',
+                  level: course.level,
+                  xpReward: course.xpReward,
+                  duration: course.duration || undefined,
+                  format: course.format,
+                  skills: course.skills
+                }}
+              />
+            ))}
 
-          {/* Курс развития */}
-          {profile.userSkills.length < 5 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <Badge variant="secondary">Развитие</Badge>
-                </div>
-                <CardTitle className="text-lg">Программа "Полиглот"</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Изучите новые технологии и получите бейдж "Полиглот" за владение 5+ навыками.
-                </p>
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline">
-                    Программа
-                  </Button>
-                  <Button size="sm">
-                    Присоединиться
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+            {/* Вакансии (если подходящий уровень) */}
+            {profile.level >= 2 && jobOpenings.slice(0, 1).map((job) => (
+              <OpportunityPreviewCard
+                key={job.id}
+                opportunity={{
+                  id: job.id,
+                  title: job.title,
+                  description: job.description,
+                  type: 'job',
+                  level: job.level,
+                  requirements: job.requirements,
+                  department: job.department
+                }}
+              />
+            ))}
+
+            {/* Менторские программы */}
+            {recommendedMentorPrograms.slice(0, 1).map((program) => (
+              <OpportunityPreviewCard
+                key={program.id}
+                opportunity={{
+                  id: program.id,
+                  title: program.title,
+                  description: program.description,
+                  type: 'mentor',
+                  skills: program.skills,
+                  maxSlots: program.maxSlots,
+                  mentorId: program.mentorId
+                }}
+              />
+            ))}
+          </div>
+          
+          {/* <div className="mt-4 pt-4 border-t">
+            <Link href="/dashboard/employee/opportunities">
+              <Button className="w-full" variant="outline">
+                <TrendingUp className="mr-2 h-4 w-4" />
+                Открыть все возможности
+              </Button>
+            </Link>
+          </div> */}
+        </CardContent>
+      </Card>
 
       {/* Недавние достижения */}
       {profile.badges.length > 0 && (

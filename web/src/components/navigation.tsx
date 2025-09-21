@@ -20,6 +20,7 @@ import {
   BarChart3,
   LogOut 
 } from "lucide-react"
+import { TCoinBalance } from "@/components/tcoin-balance"
 
 interface NavigationProps {
   user: {
@@ -51,6 +52,7 @@ export function Navigation({ user }: NavigationProps) {
         return [
           { href: "/dashboard/employee", label: "Мой Карьерный Путь" },
           { href: "/dashboard/employee/profile", label: "Мастерская Карьеры" },
+          { href: "/dashboard/employee/shop", label: "T-Coins Магазин" },
         ]
       case Role.MANAGER:
         return [
@@ -93,6 +95,11 @@ export function Navigation({ user }: NavigationProps) {
           </nav>
 
           <div className="flex items-center space-x-4">
+            {/* T-Coins баланс только для сотрудников */}
+            {user.role === Role.EMPLOYEE && (
+              <TCoinBalance variant="compact" />
+            )}
+            
             <Badge variant="secondary" className="flex items-center space-x-1">
               <Icon className="w-3 h-3" />
               <span>{roleLabels[user.role]}</span>

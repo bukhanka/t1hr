@@ -268,6 +268,8 @@ async function main() {
             xp: Math.floor(Math.random() * 2000) + 500, // От 500 до 2500 XP
             level: Math.floor(Math.random() * 5) + 1, // От 1 до 5 уровня
             profileStrength: Math.floor(Math.random() * 60) + 40, // От 40% до 100%
+            tCoins: Math.floor(Math.random() * 400) + 100, // От 100 до 500 T-Coins
+            totalEarned: Math.floor(Math.random() * 800) + 200, // От 200 до 1000 всего заработано
           }
         }
       },
@@ -455,6 +457,211 @@ async function main() {
   )
   console.log(`✅ Создано ${createdJobOpenings.length} вакансий`)
 
+  // Создаем курсы
+  console.log('📚 Создаем курсы обучения...')
+  const courses = [
+    {
+      title: 'Микросервисы на Spring Boot',
+      description: 'Изучение архитектуры микросервисов и их реализации на Spring Boot',
+      category: 'Техническое',
+      level: 'Middle',
+      duration: 40,
+      format: 'Online',
+      skills: ['java', 'spring', 'microservices'],
+      xpReward: 150,
+      status: 'ACTIVE' as const
+    },
+    {
+      title: 'Machine Learning для начинающих',
+      description: 'Основы машинного обучения и нейронных сетей',
+      category: 'Техническое',
+      level: 'Junior',
+      duration: 60,
+      format: 'Hybrid',
+      skills: ['python', 'machine learning', 'tensorflow'],
+      xpReward: 200,
+      status: 'ACTIVE' as const
+    },
+    {
+      title: 'React и TypeScript',
+      description: 'Современная фронтенд разработка с использованием React и TypeScript',
+      category: 'Техническое',
+      level: 'Middle',
+      duration: 32,
+      format: 'Online',
+      skills: ['react', 'typescript', 'javascript'],
+      xpReward: 120,
+      status: 'ACTIVE' as const
+    },
+    {
+      title: 'Лидерство в IT',
+      description: 'Навыки управления техническими командами и проектами',
+      category: 'Менеджмент',
+      level: 'Senior',
+      duration: 24,
+      format: 'Offline',
+      skills: ['leadership', 'mentoring', 'management'],
+      xpReward: 100,
+      status: 'ACTIVE' as const
+    },
+    {
+      title: 'Docker и Kubernetes',
+      description: 'Контейнеризация и оркестрация приложений',
+      category: 'Техническое',
+      level: 'Middle',
+      duration: 48,
+      format: 'Online',
+      skills: ['docker', 'kubernetes', 'devops'],
+      xpReward: 180,
+      status: 'ACTIVE' as const
+    },
+    {
+      title: 'Python для Data Science',
+      description: 'Анализ данных и машинное обучение на Python',
+      category: 'Техническое',
+      level: 'Junior',
+      duration: 56,
+      format: 'Hybrid',
+      skills: ['python', 'data science', 'analytics'],
+      xpReward: 160,
+      status: 'ACTIVE' as const
+    }
+  ]
+  
+  const createdCourses = await Promise.all(
+    courses.map(course =>
+      prisma.course.create({
+        data: course
+      })
+    )
+  )
+  console.log(`✅ Создано ${createdCourses.length} курсов`)
+
+  // Создаем менторские программы
+  console.log('👨‍🏫 Создаем менторские программы...')
+  
+  // Найдем опытных пользователей для роли менторов
+  const seniorUsers = createdUsers.filter(user => 
+    user.profile && 
+    (user.profile.jobTitle?.includes('Senior') || user.profile.jobTitle?.includes('Lead'))
+  )
+  
+  const mentorPrograms = [
+    {
+      title: 'Junior → Middle Developer',
+      description: 'Программа развития для Junior разработчиков с целью перехода на Middle уровень',
+      skills: ['java', 'python', 'javascript', 'react'],
+      mentorId: seniorUsers[0]?.id || 'mentor-1',
+      maxSlots: 5,
+      status: 'ACTIVE'
+    },
+    {
+      title: 'Путь в Data Science',
+      description: 'Менторинг для перехода в Data Science из других областей разработки',
+      skills: ['python', 'machine learning', 'statistics', 'analytics'],
+      mentorId: seniorUsers[1]?.id || 'mentor-2',
+      maxSlots: 3,
+      status: 'ACTIVE'
+    },
+    {
+      title: 'Tech Lead Bootcamp',
+      description: 'Развитие лидерских навыков для технических специалистов',
+      skills: ['leadership', 'architecture', 'mentoring', 'management'],
+      mentorId: seniorUsers[2]?.id || 'mentor-3',
+      maxSlots: 4,
+      status: 'ACTIVE'
+    },
+    {
+      title: 'DevOps для разработчиков',
+      description: 'Изучение DevOps практик и инструментов',
+      skills: ['docker', 'kubernetes', 'aws', 'ci/cd'],
+      mentorId: seniorUsers[3]?.id || 'mentor-4',
+      maxSlots: 6,
+      status: 'ACTIVE'
+    }
+  ]
+  
+  const createdMentorPrograms = await Promise.all(
+    mentorPrograms.map(program =>
+      prisma.mentorProgram.create({
+        data: program
+      })
+    )
+  )
+  console.log(`✅ Создано ${createdMentorPrograms.length} менторских программ`)
+
+  // Записываем несколько пользователей на курсы
+  console.log('🎓 Записываем пользователей на курсы...')
+  let courseEnrollments = 0
+  
+  for (const user of createdUsers.slice(0, 10)) { // Первые 10 пользователей
+    if (!user.profile) continue
+    
+    // Каждый записывается на 1-2 курса
+    const numCourses = Math.floor(Math.random() * 2) + 1
+    const selectedCourses = createdCourses
+      .sort(() => 0.5 - Math.random())
+      .slice(0, numCourses)
+    
+    for (const course of selectedCourses) {
+      const statuses = ['PLANNED', 'IN_PROGRESS', 'COMPLETED'] as const
+      const status = statuses[Math.floor(Math.random() * statuses.length)]
+      
+      await prisma.userCourse.create({
+        data: {
+          profileId: user.profile.id,
+          courseId: course.id,
+          status: status,
+          startDate: status !== 'PLANNED' ? new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000) : null,
+          completedAt: status === 'COMPLETED' ? new Date() : null,
+          xpAwarded: status === 'COMPLETED' ? course.xpReward : 0,
+          progress: status === 'COMPLETED' ? 100 : Math.floor(Math.random() * 80) + 10
+        }
+      })
+      courseEnrollments++
+    }
+  }
+  console.log(`✅ Создано ${courseEnrollments} записей на курсы`)
+
+  // Создаем T-Coin транзакции для истории
+  console.log('💰 Создаем T-Coin транзакции...')
+  let tcoinTransactions = 0
+  
+  const transactionSources = [
+    { source: 'skill_added', description: 'Добавление навыка (+25 T-Coins)', amount: 25 },
+    { source: 'project_achievement_added', description: 'Описание достижений (+100 T-Coins)', amount: 100 },
+    { source: 'career_goal_set', description: 'Постановка карьерной цели (+50 T-Coins)', amount: 50 },
+    { source: 'profile_updated', description: 'Обновление профиля (+15 T-Coins)', amount: 15 },
+    { source: 'chat_with_ai', description: 'Общение с ИИ-навигатором (+5 T-Coins)', amount: 5 },
+    { source: 'merch_purchase', description: 'Покупка: Фирменная кружка T1', amount: -300 },
+    { source: 'course_priority', description: 'Покупка: Приоритет в очереди на курсы', amount: -200 }
+  ]
+
+  for (const user of createdUsers.slice(0, 15)) { // Первые 15 пользователей
+    if (!user.profile) continue
+    
+    // Создаем 3-7 транзакций для каждого
+    const numTransactions = Math.floor(Math.random() * 5) + 3
+    
+    for (let i = 0; i < numTransactions; i++) {
+      const transaction = transactionSources[Math.floor(Math.random() * transactionSources.length)]
+      const createdAt = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) // Последние 30 дней
+      
+      await prisma.tCoinTransaction.create({
+        data: {
+          profileId: user.profile.id,
+          amount: transaction.amount,
+          type: transaction.amount > 0 ? 'earned' : 'spent',
+          source: transaction.source,
+          description: transaction.description,
+          createdAt
+        }
+      })
+      tcoinTransactions++
+    }
+  }
+  console.log(`✅ Создано ${tcoinTransactions} T-Coin транзакций`)
+
   console.log('\n🎉 База данных успешно заполнена демо-данными!')
   console.log('📊 Статистика:')
   console.log(`   👥 Пользователи: ${createdUsers.length}`)
@@ -462,10 +669,14 @@ async function main() {
   console.log(`   🚀 Проекты: ${projects.length}`)
   console.log(`   🏆 Бейджи: ${badges.length}`)
   console.log(`   💼 Вакансии: ${createdJobOpenings.length}`)
+  console.log(`   📖 Курсы: ${createdCourses?.length || 0}`)
+  console.log(`   👨‍🏫 Менторские программы: ${createdMentorPrograms?.length || 0}`)
   console.log(`   🎯 Связи навыков: ${skillAssignments}`)
   console.log(`   📋 Назначения на проекты: ${projectAssignments}`)
   console.log(`   🎯 Карьерные цели: ${careerGoals}`)
   console.log(`   🏅 Назначения бейджей: ${badgeAssignments}`)
+  console.log(`   🎓 Записи на курсы: ${courseEnrollments || 0}`)
+  console.log(`   💰 T-Coin транзакции: ${tcoinTransactions}`)
 }
 
 main()
