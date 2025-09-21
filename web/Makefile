@@ -41,6 +41,9 @@ help:
 	@echo "Utilities:"
 	@echo "  logs          - Show application logs"
 	@echo "  db-migrate    - Run database migrations + pgvector setup"
+	@echo "  db-seed       - Seed database with pgvector setup"
+	@echo "  db-reset      - Reset database + pgvector setup"
+	@echo "  db-full-reset - Full reset: containers + DB + pgvector + seed"
 	@echo "  db-setup-pgvector - Setup pgvector extensions and indexes"
 	@echo "  db-test-pgvector  - Test pgvector functionality"
 	@echo "  db-init-embeddings - Initialize embeddings for profiles"
@@ -125,6 +128,8 @@ db-migrate: check-docker
 	make db-setup-pgvector
 
 db-seed: check-docker
+	@echo "Setting up pgvector before seeding..."
+	make db-setup-pgvector
 	@echo "Seeding database..."
 	$(DOCKER_COMPOSE) exec app npx prisma db seed
 
@@ -137,14 +142,12 @@ db-reset: check-docker
 # pgvector specific commands
 db-setup-pgvector: check-docker
 	@echo "🔧 Setting up pgvector extensions and indexes..."
-	$(DOCKER_COMPOSE) exec postgres psql -U postgres -d scibox_talent_db -f /scripts/post-migration.sql || \
-	docker cp ./scripts/post-migration.sql scibox-talent-db:/tmp/ && \
-	$(DOCKER_COMPOSE) exec postgres psql -U postgres -d scibox_talent_db -f /tmp/post-migration.sql
+	$(DOCKER_COMPOSE) exec postgres psql -U postgres -d scibox_talent_db -c "CREATE EXTENSION IF NOT EXISTS vector; ALTER TABLE \"Profile\" ADD COLUMN IF NOT EXISTS embedding vector(1024); CREATE INDEX IF NOT EXISTS profile_embedding_cosine_idx ON \"Profile\" USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);"
 	@echo "✅ pgvector setup completed!"
 
 db-test-pgvector: check-docker
 	@echo "🧪 Testing pgvector functionality..."
-	$(DOCKER_COMPOSE) exec postgres psql -U postgres -d scibox_talent_db -c "SELECT get_vector_index_stats();"
+	$(DOCKER_COMPOSE) exec postgres psql -U postgres -d scibox_talent_db -c "SELECT COUNT(*) as total_profiles, COUNT(embedding) as profiles_with_embeddings FROM \"Profile\" p JOIN \"User\" u ON p.\"userId\" = u.id WHERE u.role = 'EMPLOYEE';"
 	@echo "✅ pgvector test completed!"
 
 db-init-embeddings: check-docker
@@ -159,6 +162,16 @@ db-init-embeddings: check-docker
 		process.exit(1);
 	});
 	"
+
+# Full reset with everything
+db-full-reset: check-docker
+	@echo "🧹 Full reset: stopping containers, cleaning volumes..."
+	make clean
+	@echo "🚀 Starting fresh setup..."
+	make setup
+	@echo "🌱 Seeding database with pgvector..."
+	make db-seed
+	@echo "✅ Full reset completed! Everything is ready."
 
 # Cleanup commands
 clean: check-docker
@@ -195,4 +208,6 @@ setup: check-docker
 	@echo "🔧 Running database migrations..."
 	npx prisma migrate dev --name init
 	npx prisma generate
+	@echo "🔧 Setting up pgvector..."
+	make db-setup-pgvector
 	@echo "✅ Setup complete! Run 'make dev-up' to start development."
