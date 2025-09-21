@@ -8,8 +8,8 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'Profile' AND column_name = 'embedding'
     ) THEN
-        ALTER TABLE "Profile" ADD COLUMN embedding vector(1024);
-        COMMENT ON COLUMN "Profile".embedding IS 'Векторное представление профиля для семантического поиска (bge-m3, 1024 измерения)';
+        ALTER TABLE "Profile" ADD COLUMN embedding vector(256);
+        COMMENT ON COLUMN "Profile".embedding IS 'Векторное представление профиля для семантического поиска (bge-m3, 256 измерений)';
     END IF;
 END $$;
 
@@ -30,7 +30,7 @@ WITH (m = 16, ef_construction = 64);
 
 -- 4. Создаем функцию для поиска похожих профилей
 CREATE OR REPLACE FUNCTION find_similar_profiles(
-    query_embedding vector(1024),
+    query_embedding vector(256),
     similarity_threshold float DEFAULT 0.3,
     max_results int DEFAULT 10
 )
