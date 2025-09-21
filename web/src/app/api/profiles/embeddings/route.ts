@@ -106,7 +106,7 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id || !['MANAGER', 'HR'].includes(session.user.role)) {
+    if (!session?.user?.id || !['MANAGER', 'HR', 'PROJECT_MANAGER'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Недостаточно прав' },
         { status: 403 }

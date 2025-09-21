@@ -103,6 +103,16 @@ export function OpportunityCard({
     }
   }
 
+  const getWithdrawApiEndpoint = () => {
+    switch (type) {
+      case 'course': return '/api/courses/withdraw'
+      case 'mentor': return '/api/mentoring/withdraw'
+      case 'project': return '/api/projects/withdraw-interest'
+      case 'job': return '/api/jobs/withdraw'
+      case 'skill': return '/api/skills/remove-from-goals'
+    }
+  }
+
   const getRequestBody = () => {
     switch (type) {
       case 'course': return { courseId: id }
@@ -173,6 +183,48 @@ export function OpportunityCard({
     }
   }
 
+  const handleWithdraw = async () => {
+    if (!enrolled) return
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(getWithdrawApiEndpoint(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(getRequestBody())
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setEnrolled(false)
+        toast({
+          variant: "success",
+          title: "Заявка отозвана",
+          description: data.message || "Заявка успешно отозвана",
+        })
+      } else {
+        toast({
+          variant: "error",
+          title: "Ошибка",
+          description: data.error || "Не удалось отозвать заявку",
+        })
+      }
+    } catch (error) {
+      console.error('Ошибка при отзыве заявки:', error)
+      toast({
+        variant: "error",
+        title: "Ошибка",
+        description: "Не удалось отозвать заявку",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader>
@@ -225,18 +277,26 @@ export function OpportunityCard({
             <Button size="sm" variant="outline" onClick={() => setShowDetails(true)}>
               Подробнее
             </Button>
-            <Button 
-              size="sm" 
-              onClick={handleAction}
-              disabled={isLoading || enrolled}
-            >
-              {isLoading && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-              {enrolled 
-                ? (type === 'course' ? 'Записан' : 
-                   type === 'skill' ? 'В целях' : 'Подано')
-                : actionText
-              }
-            </Button>
+            {enrolled ? (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleWithdraw}
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                Отозвать
+              </Button>
+            ) : (
+              <Button 
+                size="sm" 
+                onClick={handleAction}
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                {actionText}
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>

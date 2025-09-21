@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { NavigatorCard } from "@/components/navigator-card"
 import { OpportunityPreviewCard } from "@/components/opportunity-preview-card"
 import { OnboardingBanner } from "@/components/onboarding-banner"
+import { RotationApplicationCard } from "@/components/rotation-application-card"
 import { GamificationService } from "@/lib/gamification"
 import { SmartRankingService } from "@/lib/smart-ranking"
 import Link from "next/link"
@@ -118,6 +119,17 @@ export default async function EmployeeDashboard() {
     redirect("/dashboard/employee") // Перезагружаем страницу
   }
 
+  // Проверяем и обновляем уровень, если XP превышает требования
+  const calculatedLevel = GamificationService.calculateLevel(profile.xp)
+  if (calculatedLevel > profile.level) {
+    // Обновляем уровень в базе данных
+    await prisma.profile.update({
+      where: { userId: session.user.id },
+      data: { level: calculatedLevel }
+    })
+    profile.level = calculatedLevel
+  }
+
   // Получаем информацию об уровне
   const levelInfo = GamificationService.getLevelInfo(profile.level)
   const nextBestAction = await GamificationService.getNextBestAction(session.user.id)
@@ -194,15 +206,20 @@ export default async function EmployeeDashboard() {
         />
       )}
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* ИИ-консультант Навигатор */}
         <NavigatorCard 
-          className="md:col-span-2" 
+          className="md:col-span-2 lg:col-span-2" 
           profileStrength={profile.profileStrength}
           recentAchievements={profile.badges.slice(0, 3).map((ub: any) => ub.badge.name)}
           onboardingCompleted={profile.onboardingCompleted}
         />
 
+        {/* Заявка на ротацию */}
+        <RotationApplicationCard className="md:col-span-2 lg:col-span-2" />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Прогресс профиля */}
         <Card className="bg-gradient-to-br from-emerald-50 to-teal-100/50 border-emerald-200/50 hover:shadow-lg transition-all duration-300">
           <CardHeader className="pb-4">
@@ -219,16 +236,10 @@ export default async function EmployeeDashboard() {
                 <span className="text-sm font-semibold text-gray-700">Сила Профиля</span>
                 <span className="text-lg font-bold text-emerald-700">{profile.profileStrength}%</span>
               </div>
-              <div className="relative">
-                <Progress 
-                  value={profile.profileStrength} 
-                  className="h-3 bg-emerald-100 rounded-full"
-                />
-                <div 
-                  className="absolute top-0 left-0 h-3 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${profile.profileStrength}%` }}
-                />
-              </div>
+              <Progress 
+                value={profile.profileStrength} 
+                className="h-3 bg-emerald-100 rounded-full"
+              />
             </div>
             
             <div className="space-y-3">
@@ -241,16 +252,10 @@ export default async function EmployeeDashboard() {
                 </span>
               </div>
               {levelInfo.next && (
-                <div className="relative">
-                  <Progress 
-                    value={((profile.xp - levelInfo.current!.minXp) / (levelInfo.next.minXp - levelInfo.current!.minXp)) * 100} 
-                    className="h-2 bg-teal-100"
-                  />
-                  <div 
-                    className="absolute top-0 left-0 h-2 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full transition-all duration-500"
-                    style={{ width: `${((profile.xp - levelInfo.current!.minXp) / (levelInfo.next.minXp - levelInfo.current!.minXp)) * 100}%` }}
-                  />
-                </div>
+                <Progress 
+                  value={((profile.xp - levelInfo.current!.minXp) / (levelInfo.next.minXp - levelInfo.current!.minXp)) * 100} 
+                  className="h-2 bg-teal-100"
+                />
               )}
             </div>
 

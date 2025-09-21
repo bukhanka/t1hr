@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { GamificationService } from '@/lib/gamification'
 
-// Временная таблица для хранения заявок на проекты (пока нет отдельной модели)
-// В реальном продакте здесь была бы отдельная таблица ProjectInterest или подобная
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     if (project.status !== 'ACTIVE') {
       return NextResponse.json(
-        { error: 'Проект недоступен' }, 
+        { error: 'Проект недоступен для участия' }, 
         { status: 400 }
       )
     }
@@ -56,52 +55,51 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем, не участвует ли уже в проекте
-    const existingParticipation = await prisma.userProject.findUnique({
+    // Проверяем, не выразил ли уже интерес к проекту
+    const existingInterest = await prisma.userProject.findFirst({
       where: {
-        profileId_projectId: {
-          profileId: profile.id,
-          projectId: projectId
-        }
+        profileId: profile.id,
+        projectId: projectId
       }
     })
 
-    if (existingParticipation) {
+    if (existingInterest) {
       return NextResponse.json(
-        { error: 'Вы уже участвуете в этом проекте' }, 
+        { error: 'Вы уже выразили интерес к этому проекту' }, 
         { status: 409 }
       )
     }
 
-    // В реальной системе здесь создавалась бы заявка на участие в проекте
-    // Для демо мы можем создать запись в UserProject с специальным статусом
-    // или использовать отдельную таблицу ProjectApplications
-    
-    // Временно: создаем запись с пометкой что это заявка
-    const interest = await prisma.userProject.create({
+    // Выражаем интерес к проекту
+    const userProject = await prisma.userProject.create({
       data: {
         profileId: profile.id,
         projectId: projectId,
-        roleInProject: 'Заявка на участие',
-        achievements: null, // Пустые достижения, так как участие еще не началось
-        startDate: null,
-        endDate: null
+        roleInProject: 'PARTICIPANT'
       },
       include: {
         project: true
       }
     })
 
-    console.log(`🚀 Пользователь ${session.user.email} подал заявку на проект "${project.name}"`)
+    // Начисляем XP за выражение интереса к проекту
+    const gamificationResult = await GamificationService.awardXP(
+      session.user.id, 
+      'PROJECT_ADDED',
+      0.5
+    )
+
+    console.log(`🚀 Пользователь ${session.user.email} выразил интерес к проекту "${project.name}"`)
 
     return NextResponse.json({ 
       success: true,
-      message: `Заявка на участие в проекте "${project.name}" отправлена`,
-      interest
+      message: `Интерес к проекту "${project.name}" выражен`,
+      userProject,
+      gamification: gamificationResult
     })
 
   } catch (error) {
-    console.error('Ошибка при подаче заявки на проект:', error)
+    console.error('Ошибка при выражении интереса к проекту:', error)
     return NextResponse.json(
       { error: 'Внутренняя ошибка сервера' }, 
       { status: 500 }

@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Только HR и менеджеры могут инициализировать эмбеддинги
-    if (!['HR', 'MANAGER'].includes(session.user.role)) {
+    // Только HR, менеджеры и project managers могут инициализировать эмбеддинги
+    if (!['HR', 'MANAGER', 'PROJECT_MANAGER'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Недостаточно прав для инициализации эмбеддингов' },
         { status: 403 }
@@ -74,7 +74,7 @@ export async function GET() {
       )
     }
 
-    if (!['HR', 'MANAGER'].includes(session.user.role)) {
+    if (!['HR', 'MANAGER', 'PROJECT_MANAGER'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Недостаточно прав' },
         { status: 403 }

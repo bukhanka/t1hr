@@ -19,6 +19,7 @@ model User {
   accounts      Account[]
   profile       Profile?
   sessions      Session[]
+  reviewedRotationApplications RotationApplication[] @relation("RotationApplicationReviewer")
 }
 
 model Account {
@@ -92,6 +93,7 @@ model Profile {
   managedProjects       Project[]             @relation("ProjectManager")
   awardedTransactions   TCoinTransaction[]    @relation("TCoinAwarder")
   tcoinPermissions      TCoinAwardPermission[] @relation("ManagerPermissions")
+  rotationApplication   RotationApplication?
 }
 
 model Skill {
@@ -469,4 +471,28 @@ enum MentorRole {
 enum RotationStatus {
   ROTATION    // Сотрудник в ротации - может видеть проекты/вакансии
   STABLE      // Стабильная позиция - не показываем проекты/вакансии
+}
+
+model RotationApplication {
+  id          String            @id @default(cuid())
+  profileId   String
+  status      ApplicationStatus @default(PENDING)
+  reason      String?           // Причина подачи заявки
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  reviewedAt  DateTime?
+  reviewedBy  String?           // ID HR менеджера, который рассмотрел заявку
+  notes       String?           // Комментарии HR
+  
+  profile     Profile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  reviewer    User?             @relation("RotationApplicationReviewer", fields: [reviewedBy], references: [id])
+  
+  @@unique([profileId]) // Один сотрудник может иметь только одну активную заявку
+}
+
+enum ApplicationStatus {
+  PENDING     // Заявка подана, ожидает рассмотрения
+  APPROVED    // Заявка одобрена
+  REJECTED    // Заявка отклонена
+  WITHDRAWN   // Заявка отозвана сотрудником
 }

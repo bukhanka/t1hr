@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/providers/toast-provider"
 import { 
   BookOpen,
   Users,
@@ -13,7 +15,8 @@ import {
   User,
   Calendar,
   Target,
-  MapPin
+  MapPin,
+  Loader2
 } from "lucide-react"
 
 interface OpportunityDetailsModalProps {
@@ -39,6 +42,126 @@ interface OpportunityDetailsModalProps {
 }
 
 export function OpportunityDetailsModal({ isOpen, onClose, opportunity }: OpportunityDetailsModalProps) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [enrolled, setEnrolled] = useState(false)
+  const { toast } = useToast()
+
+  const getApiEndpoint = () => {
+    switch (opportunity.type) {
+      case 'course': return '/api/courses/enroll'
+      case 'mentor': return '/api/mentoring/apply'
+      case 'project': return '/api/projects/express-interest'
+      case 'job': return '/api/jobs/apply'
+      case 'skill': return '/api/skills/add-to-goals'
+    }
+  }
+
+  const getWithdrawApiEndpoint = () => {
+    switch (opportunity.type) {
+      case 'course': return '/api/courses/withdraw'
+      case 'mentor': return '/api/mentoring/withdraw'
+      case 'project': return '/api/projects/withdraw-interest'
+      case 'job': return '/api/jobs/withdraw'
+      case 'skill': return '/api/skills/remove-from-goals'
+    }
+  }
+
+  const getRequestBody = () => {
+    switch (opportunity.type) {
+      case 'course': return { courseId: opportunity.id }
+      case 'mentor': return { programId: opportunity.id }
+      case 'project': return { projectId: opportunity.id }
+      case 'job': return { jobId: opportunity.id }
+      case 'skill': return { skillId: opportunity.id }
+    }
+  }
+
+  const getActionText = () => {
+    switch (opportunity.type) {
+      case 'course': return enrolled ? 'Записан' : 'Записаться на курс'
+      case 'mentor': return enrolled ? 'Заявка подана' : 'Подать заявку'
+      case 'project': return enrolled ? 'Интерес выражен' : 'Выразить интерес'
+      case 'job': return enrolled ? 'Заявка подана' : 'Подать заявку'
+      case 'skill': return enrolled ? 'В целях' : 'Добавить в цели'
+    }
+  }
+
+  const handleAction = async () => {
+    if (isLoading || enrolled) return
+
+    setIsLoading(true)
+    
+    try {
+      const response = await fetch(getApiEndpoint(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(getRequestBody()),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Произошла ошибка')
+      }
+
+      setEnrolled(true)
+      toast({
+        title: "Успешно!",
+        description: data.message || "Действие выполнено успешно",
+        variant: "default",
+      })
+    } catch (error) {
+      console.error('Ошибка при выполнении действия:', error)
+      toast({
+        title: "Ошибка",
+        description: error instanceof Error ? error.message : "Произошла ошибка при выполнении действия",
+        variant: "error",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleWithdraw = async () => {
+    if (isLoading || !enrolled) return
+
+    setIsLoading(true)
+    
+    try {
+      const response = await fetch(getWithdrawApiEndpoint(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(getRequestBody()),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Произошла ошибка')
+      }
+
+      setEnrolled(false)
+      toast({
+        title: "Заявка отозвана",
+        description: data.message || "Заявка успешно отозвана",
+        variant: "default",
+      })
+    } catch (error) {
+      console.error('Ошибка при отзыве заявки:', error)
+      toast({
+        title: "Ошибка",
+        description: error instanceof Error ? error.message : "Произошла ошибка при отзыве заявки",
+        variant: "error",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const getTypeIcon = () => {
     switch (opportunity.type) {
       case 'course': return <BookOpen className="h-5 w-5 text-blue-600" />
@@ -239,13 +362,24 @@ export function OpportunityDetailsModal({ isOpen, onClose, opportunity }: Opport
             <Button variant="outline" onClick={onClose}>
               Закрыть
             </Button>
-            <Button>
-              {opportunity.type === 'course' && 'Записаться на курс'}
-              {opportunity.type === 'mentor' && 'Подать заявку'}
-              {opportunity.type === 'project' && 'Выразить интерес'}
-              {opportunity.type === 'job' && 'Подать заявку'}
-              {opportunity.type === 'skill' && 'Добавить в цели'}
-            </Button>
+            {enrolled ? (
+              <Button 
+                variant="outline"
+                onClick={handleWithdraw}
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Отозвать заявку
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleAction}
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {getActionText()}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

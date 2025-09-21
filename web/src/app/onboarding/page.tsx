@@ -3,8 +3,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { OnboardingWrapper } from '@/components/onboarding-wrapper'
-import { OnboardingChat } from '@/components/onboarding-chat'
-import { Loader2, ArrowLeft } from 'lucide-react'
+import { Loader2, ArrowLeft, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -32,6 +31,12 @@ export default async function OnboardingPage() {
             </div>
             
             <div className="flex items-center space-x-2">
+              <Link href="/chat">
+                <Button variant="ghost" size="sm">
+                  <MessageCircle className="w-4 h-4 mr-1" />
+                  Навигатор
+                </Button>
+              </Link>
               <Link href="/dashboard">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="w-4 h-4 mr-1" />
@@ -47,12 +52,26 @@ export default async function OnboardingPage() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           {/* Основной онбординг квиз */}
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Добро пожаловать в SciBox Talent!</h2>
-              <p className="text-gray-600">Пройдите короткий опрос, чтобы мы могли персонализировать ваш опыт</p>
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">Добро пожаловать в SciBox Talent!</h2>
+              <p className="text-lg text-gray-600 mb-6">Пройдите короткий опрос, чтобы мы могли персонализировать ваш опыт</p>
+              
+              {/* Информационная карточка о навигаторе */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-center space-x-2 text-blue-800">
+                  <MessageCircle className="h-5 w-5" />
+                  <span className="font-medium">Есть вопросы?</span>
+                </div>
+                <p className="text-blue-700 text-sm mt-1">
+                  Навигатор поможет вам разобраться с процессом онбординга. 
+                  <Link href="/chat" className="text-blue-600 hover:text-blue-800 underline ml-1">
+                    Перейти к чату
+                  </Link>
+                </p>
+              </div>
             </div>
             
             <Suspense fallback={
@@ -63,16 +82,6 @@ export default async function OnboardingPage() {
             }>
               <OnboardingWrapper />
             </Suspense>
-          </div>
-
-          {/* Чат помощник */}
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Есть вопросы?</h2>
-              <p className="text-gray-600">Навигатор поможет вам разобраться с процессом онбординга</p>
-            </div>
-            
-            <OnboardingChat className="sticky top-24" />
           </div>
         </div>
       </div>

@@ -1,8 +1,8 @@
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { Role } from "@prisma/client"
-import { prisma } from "@/lib/prisma"
+"use client"
+
+import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,43 +23,121 @@ import {
   TrendingUp
 } from "lucide-react"
 
-export default async function EmployeeProfile() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session || session.user.role !== Role.EMPLOYEE) {
-    redirect("/dashboard")
-  }
+interface Skill {
+  id: string
+  name: string
+  category?: string | null
+}
 
-  // Получаем полный профиль пользователя
-  const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
-    include: {
-      userSkills: {
-        include: { skill: true },
-        orderBy: { skill: { name: 'asc' } }
-      },
-      userProjects: {
-        include: { project: true },
-        orderBy: { updatedAt: 'desc' }
-      },
-      careerGoals: {
-        orderBy: { priority: 'desc' }
-      },
-      badges: {
-        include: { badge: true },
-        orderBy: { awardedAt: 'desc' },
-        take: 10
-      }
+interface UserSkill {
+  id: string
+  level: number
+  isVerified: boolean
+  status: 'USING' | 'WANTS_TO_LEARN'
+  skill: Skill
+}
+
+interface Project {
+  id: string
+  name: string
+  description?: string | null
+}
+
+interface UserProject {
+  id: string
+  achievements?: string | null
+  project: Project
+}
+
+interface Badge {
+  id: string
+  name: string
+  description?: string | null
+}
+
+interface UserBadge {
+  id: string
+  badge: Badge
+}
+
+interface CareerGoal {
+  id: string
+  goalType: string
+  target: string
+  priority: number
+  createdAt: Date | string
+}
+
+interface Profile {
+  id: string
+  xp: number
+  level: number
+  profileStrength: number
+  tCoins: number
+  userSkills: UserSkill[]
+  userProjects: UserProject[]
+  careerGoals: CareerGoal[]
+  badges: UserBadge[]
+}
+
+export default function EmployeeProfile() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (status === "loading") return
+    
+    if (!session || session.user.role !== 'EMPLOYEE') {
+      router.push("/dashboard")
+      return
     }
-  })
 
-  if (!profile) {
-    redirect("/dashboard")
+    fetchProfile()
+  }, [session, status, router])
+
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch('/api/profiles/me')
+      if (response.ok) {
+        const profileData = await response.json()
+        setProfile(profileData)
+      } else {
+        console.error('Failed to fetch profile')
+        router.push("/dashboard")
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      router.push("/dashboard")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleDataRefresh = () => {
-    // В серверном компоненте мы просто перезагружаем страницу
-    // В реальном приложении можно использовать revalidation
+    fetchProfile()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Загрузка профиля...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-gray-600">Профиль не найден</p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -48,38 +48,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем, нет ли уже такого навыка у пользователя
-    const existingSkill = await prisma.userSkill.findUnique({
+    // Проверяем, не добавлен ли уже навык в цели
+    const existingSkill = await prisma.userSkill.findFirst({
       where: {
-        profileId_skillId: {
-          profileId: profile.id,
-          skillId: skillId
-        }
+        profileId: profile.id,
+        skillId: skillId
       }
     })
 
     if (existingSkill) {
-      // Если навык есть, но со статусом USING, меняем на WANTS_TO_LEARN не имеет смысла
-      if (existingSkill.status === 'USING') {
-        return NextResponse.json(
-          { error: 'Этот навык уже в вашем арсенале' }, 
-          { status: 409 }
-        )
-      } else {
-        return NextResponse.json(
-          { error: 'Этот навык уже в ваших целях изучения' }, 
-          { status: 409 }
-        )
-      }
+      return NextResponse.json(
+        { error: 'Навык уже добавлен в цели' }, 
+        { status: 409 }
+      )
     }
 
-    // Добавляем навык в цели изучения
+    // Добавляем навык в цели (со статусом WANTS_TO_LEARN)
     const userSkill = await prisma.userSkill.create({
       data: {
         profileId: profile.id,
         skillId: skillId,
-        level: 1, // Начальный уровень
-        isVerified: false,
+        level: 1, // Начальный уровень для навыка в целях
         status: 'WANTS_TO_LEARN'
       },
       include: {
@@ -87,18 +76,18 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Начисляем XP за добавление цели изучения
+    // Начисляем XP за добавление навыка в цели
     const gamificationResult = await GamificationService.awardXP(
       session.user.id, 
-      'CAREER_GOAL_SET', // Используем событие для целей
-      0.5 // Половина награды, так как это пока только цель
+      'SKILL_ADDED',
+      1
     )
 
-    console.log(`🎯 Пользователь ${session.user.email} добавил навык "${skill.name}" в цели изучения`)
+    console.log(`🎯 Пользователь ${session.user.email} добавил навык "${skill.name}" в цели`)
 
     return NextResponse.json({ 
       success: true,
-      message: `Навык "${skill.name}" добавлен в ваши цели изучения`,
+      message: `Навык "${skill.name}" добавлен в цели`,
       userSkill,
       gamification: gamificationResult
     })
