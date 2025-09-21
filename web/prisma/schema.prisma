@@ -91,6 +91,10 @@ model Profile {
   // T-Coins система (внутренняя валюта)
   tCoins          Int         @default(100)  // Стартовые T-Coins
   totalEarned     Int         @default(0)    // Всего заработано (для статистики)
+  
+  // Онбординг
+  onboardingCompleted Boolean  @default(false) // Завершен ли онбординг
+  onboardingCompletedAt DateTime?              // Дата завершения онбординга
 
   // Вектор для семантического поиска. Модель bge-m3 использует 1024 измерения  
   // embedding       Unsupported("vector(1024)")?  // Временно закомментировано
@@ -106,6 +110,13 @@ model Profile {
   userCourses       UserCourse[]
   mentorPrograms    UserMentorProgram[]
   tcoinTransactions TCoinTransaction[]
+  
+  // Networking и сообщества
+  createdCommunities    Community[]         @relation("CommunityCreator")
+  communityMemberships  CommunityMember[]
+  communityPosts        CommunityPost[]
+  postLikes             CommunityPostLike[]
+  postComments          CommunityPostComment[]
 
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -420,6 +431,105 @@ model RewardItem {
   imageUrl      String?
   inStock       Boolean     @default(true)
   isActive      Boolean     @default(true)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// Лидерборды для геймификации
+model Leaderboard {
+  id            String      @id @default(cuid())
+  type          String      // 'tcoins_weekly', 'tcoins_monthly', 'tcoins_alltime', 'profile_strength', 'xp_monthly'
+  period        String      // 'weekly', 'monthly', 'all_time'  
+  data          Json        // Массив { profileId, userId, name, score, position, avatar }
+  generatedAt   DateTime    @default(now())
+  validUntil    DateTime?   // Когда истекает актуальность (для кэширования)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// Сообщества для networking
+model Community {
+  id            String      @id @default(cuid())
+  name          String      // "React Developers T1"
+  description   String      @db.Text
+  type          String      // 'skill', 'project', 'interest', 'department'
+  tags          String[]    // ['frontend', 'javascript', 'ui']
+  privacy       String      @default("PUBLIC") // PUBLIC, PRIVATE, INVITE_ONLY
+  imageUrl      String?     // Аватар сообщества
+  
+  creatorId     String
+  creator       Profile     @relation("CommunityCreator", fields: [creatorId], references: [id])
+  
+  members       CommunityMember[]
+  posts         CommunityPost[]
+  
+  memberCount   Int         @default(0)
+  isActive      Boolean     @default(true)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// Участники сообществ
+model CommunityMember {
+  id            String      @id @default(cuid())
+  communityId   String
+  profileId     String
+  role          String      @default("MEMBER") // ADMIN, MODERATOR, MEMBER
+  joinedAt      DateTime    @default(now())
+  
+  community     Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  profile       Profile     @relation(fields: [profileId], references: [id])
+  
+  @@unique([communityId, profileId])
+}
+
+// Посты в сообществах
+model CommunityPost {
+  id            String      @id @default(cuid())
+  communityId   String
+  authorId      String
+  title         String?
+  content       String      @db.Text
+  type          String      @default("TEXT") // TEXT, QUESTION, RESOURCE_SHARE, EVENT
+  
+  community     Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author        Profile     @relation(fields: [authorId], references: [id])
+  likes         CommunityPostLike[]
+  comments      CommunityPostComment[]
+  
+  likesCount    Int         @default(0)
+  commentsCount Int         @default(0)
+  isPinned      Boolean     @default(false)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// Лайки постов
+model CommunityPostLike {
+  id            String      @id @default(cuid())
+  postId        String
+  profileId     String
+  
+  post          CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  profile       Profile     @relation(fields: [profileId], references: [id])
+  
+  createdAt     DateTime    @default(now())
+  @@unique([postId, profileId])
+}
+
+// Комментарии к постам
+model CommunityPostComment {
+  id            String      @id @default(cuid())
+  postId        String
+  authorId      String
+  content       String      @db.Text
+  
+  post          CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author        Profile     @relation(fields: [authorId], references: [id])
   
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt

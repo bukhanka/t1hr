@@ -87,14 +87,14 @@ async function buildSystemPrompt(userId: string, context?: { triggerSource?: str
   
   // Релевантные курсы (на основе навыков которые хочет изучить)
   const wantToLearnSkillNames = profile.userSkills
-    .filter(us => us.status === 'WANTS_TO_LEARN')
-    .map(us => us.skill.name.toLowerCase())
+    .filter((us: any) => us.status === 'WANTS_TO_LEARN')
+    .map((us: any) => us.skill.name.toLowerCase())
     
   const availableCourses = await prisma.course.findMany({
     where: { 
       status: 'ACTIVE',
       ...(wantToLearnSkillNames.length > 0 ? {
-        OR: wantToLearnSkillNames.flatMap(skillName => [
+        OR: wantToLearnSkillNames.flatMap((skillName: string) => [
           { skills: { has: skillName } },
           { title: { contains: skillName, mode: 'insensitive' } }
         ])
@@ -132,28 +132,28 @@ async function buildSystemPrompt(userId: string, context?: { triggerSource?: str
   
   // ЛИЧНЫЕ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ  
   const currentSkills = profile.userSkills
-    .filter(us => us.status === 'USING')
-    .map(us => `${us.skill.name} (уровень ${us.level}/5)`)
+    .filter((us: any) => us.status === 'USING')
+    .map((us: any) => `${us.skill.name} (уровень ${us.level}/5)`)
     .join(', ')
 
   const wantToLearnSkills = profile.userSkills
-    .filter(us => us.status === 'WANTS_TO_LEARN')
-    .map(us => us.skill.name)
+    .filter((us: any) => us.status === 'WANTS_TO_LEARN')
+    .map((us: any) => us.skill.name)
     .join(', ')
 
   const recentProjects = profile.userProjects
-    .filter(up => up.achievements)
+    .filter((up: any) => up.achievements)
     .slice(0, 3)
-    .map(up => `${up.project.name} (роль: ${up.roleInProject}, достижения: ${up.achievements})`)
+    .map((up: any) => `${up.project.name} (роль: ${up.roleInProject}, достижения: ${up.achievements})`)
     .join('; ')
 
   const careerGoals = profile.careerGoals
-    .map(cg => `${cg.goalType}: ${cg.target}`)
+    .map((cg: any) => `${cg.goalType}: ${cg.target}`)
     .join('; ')
 
   const recentBadges = profile.badges
     .slice(0, 3)
-    .map(ub => ub.badge.name)
+    .map((ub: any) => ub.badge.name)
     .join(', ')
 
   const contextualIntro = getContextualIntro(context?.triggerSource)
@@ -192,16 +192,16 @@ ${contextualIntro}
 🏢 ДОСТУПНЫЕ ВОЗМОЖНОСТИ В КОМПАНИИ:
 
 📋 АКТИВНЫЕ ПРОЕКТЫ (рекомендуй эти конкретные проекты):
-${availableProjects.map(p => `- "${p.name}": ${p.description || 'проект для развития навыков'}`).join('\n')}
+${availableProjects.map((p: any) => `- "${p.name}": ${p.description || 'проект для развития навыков'}`).join('\n')}
 
 💼 ОТКРЫТЫЕ ВАКАНСИИ (рекомендуй для карьерного роста):
-${openJobs.map(j => `- "${j.title}" (${j.department}, ${j.level}) - требует: ${j.requirements.join(', ')}`).join('\n')}
+${openJobs.map((j: any) => `- "${j.title}" (${j.department}, ${j.level}) - требует: ${j.requirements.join(', ')}`).join('\n')}
 
 📚 ДОСТУПНЫЕ КУРСЫ (рекомендуй для изучения навыков):
-${availableCourses.map(c => `- "${c.title}" (${c.category}, ${c.level}) - развивает: ${c.skills.join(', ')} [+${c.xpReward} XP]`).join('\n')}
+${availableCourses.map((c: any) => `- "${c.title}" (${c.category}, ${c.level}) - развивает: ${c.skills.join(', ')} [+${c.xpReward} XP]`).join('\n')}
 
 👥 МЕНТОРСКИЕ ПРОГРАММЫ:
-${mentorPrograms.map(m => `- "${m.title}": ${m.description} (навыки: ${m.skills.join(', ')})`).join('\n')}
+${mentorPrograms.map((m: any) => `- "${m.title}": ${m.description} (навыки: ${m.skills.join(', ')})`).join('\n')}
 
 СПОСОБЫ ПОЛУЧЕНИЯ XP:
 - Заполнение достижений в проектах: +100-200 XP
@@ -387,7 +387,7 @@ export async function POST(request: NextRequest) {
     // Подготавливаем историю сообщений для OpenAI
     const messages = [
       { role: 'system' as const, content: systemPrompt },
-      ...chatSession.messages.map(msg => ({
+      ...chatSession.messages.map((msg: any) => ({
         role: msg.role.toLowerCase() as 'user' | 'assistant',
         content: msg.content
       })),
@@ -467,19 +467,19 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Ошибка в AI chat API:', error)
     console.error('❌ Error type:', error?.constructor?.name)
-    console.error('❌ Error message:', error?.message)
-    console.error('❌ Stack trace:', error?.stack)
+    console.error('❌ Error message:', (error as any)?.message)
+    console.error('❌ Stack trace:', (error as any)?.stack)
     
     // Если это ошибка валидации или клиентская ошибка, возвращаем 400
-    if (error?.message?.includes('validation') || error?.message?.includes('invalid')) {
+    if ((error as any)?.message?.includes('validation') || (error as any)?.message?.includes('invalid')) {
       return NextResponse.json(
-        { error: 'Ошибка валидации данных', details: error.message },
+        { error: 'Ошибка валидации данных', details: (error as any).message },
         { status: 400 }
       )
     }
     
     return NextResponse.json(
-      { error: 'Внутренняя ошибка сервера', details: error?.message || 'Unknown error' },
+      { error: 'Внутренняя ошибка сервера', details: (error as any)?.message || 'Unknown error' },
       { status: 500 }
     )
   }

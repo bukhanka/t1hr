@@ -62,12 +62,12 @@ export async function POST(request: NextRequest) {
 
     // Анализируем соответствие навыков требованиям
     const userSkillNames = profile.userSkills
-      .filter(us => us.status === 'USING')
-      .map(us => us.skill.name.toLowerCase())
+      .filter((us: any) => us.status === 'USING')
+      .map((us: any) => us.skill.name.toLowerCase())
     
-    const requiredSkills = job.requirements.map(req => req.toLowerCase())
-    const matchingSkills = requiredSkills.filter(req => 
-      userSkillNames.some(userSkill => userSkill.includes(req) || req.includes(userSkill))
+    const requiredSkills = job.requirements.map((req: any) => req.toLowerCase())
+    const matchingSkills = requiredSkills.filter((req: any) => 
+      userSkillNames.some((userSkill: any) => userSkill.includes(req) || req.includes(userSkill))
     )
     
     const matchPercentage = Math.round((matchingSkills.length / requiredSkills.length) * 100)

@@ -356,7 +356,7 @@ export class GamificationService {
           type: 'spent',
           source: purpose,
           description,
-          metadata: metadata ? JSON.stringify(metadata) : null
+          metadata: metadata ? JSON.stringify(metadata) : undefined
         }
       })
 

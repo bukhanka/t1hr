@@ -9,7 +9,9 @@ import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { NavigatorCard } from "@/components/navigator-card"
 import { OpportunityPreviewCard } from "@/components/opportunity-preview-card"
+import { OnboardingBanner } from "@/components/onboarding-banner"
 import { GamificationService } from "@/lib/gamification"
+import { SmartRankingService } from "@/lib/smart-ranking"
 import Link from "next/link"
 import { 
   Target,
@@ -185,12 +187,20 @@ export default async function EmployeeDashboard() {
         </div>
       </div>
 
+      {/* Баннер онбординга для новых пользователей */}
+      {!profile.onboardingCompleted && (
+        <OnboardingBanner 
+          profileStrength={profile.profileStrength}
+        />
+      )}
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* ИИ-консультант Навигатор */}
         <NavigatorCard 
           className="md:col-span-2" 
           profileStrength={profile.profileStrength}
           recentAchievements={profile.badges.slice(0, 3).map(ub => ub.badge.name)}
+          onboardingCompleted={profile.onboardingCompleted}
         />
 
         {/* Прогресс профиля */}

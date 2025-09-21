@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем свободные места
-    const menteeCount = program.participants.filter(p => p.role === 'MENTEE').length
+    const menteeCount = program.participants.filter((p: any) => p.role === 'MENTEE').length
     if (menteeCount >= program.maxSlots) {
       return NextResponse.json(
         { error: 'В программе нет свободных мест' }, 

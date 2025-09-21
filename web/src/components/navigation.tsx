@@ -53,6 +53,8 @@ export function Navigation({ user }: NavigationProps) {
           { href: "/dashboard/employee", label: "Мой Карьерный Путь" },
           { href: "/dashboard/employee/profile", label: "Мастерская Карьеры" },
           { href: "/dashboard/employee/shop", label: "T-Coins Магазин" },
+          { href: "/communities", label: "Сообщества" },
+          { href: "/leaderboards", label: "Лидерборды" },
         ]
       case Role.MANAGER:
         return [

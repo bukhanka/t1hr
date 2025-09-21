@@ -63,7 +63,7 @@ export async function GET(
       title: chatSession.title || 'Диалог с Навигатором',
       createdAt: chatSession.createdAt.toISOString(),
       updatedAt: chatSession.updatedAt.toISOString(),
-      messages: chatSession.messages.map(msg => ({
+      messages: chatSession.messages.map((msg: any) => ({
         id: msg.id,
         role: msg.role,
         content: msg.content,

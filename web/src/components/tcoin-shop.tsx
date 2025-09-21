@@ -87,7 +87,7 @@ export function TCoinShop() {
       toast({
         title: "Недостаточно T-Coins",
         description: `Для покупки "${item.name}" нужно ${item.cost} T-Coins, у вас ${balance?.current || 0}`,
-        variant: "destructive"
+        variant: "error"
       })
       return
     }
@@ -117,14 +117,14 @@ export function TCoinShop() {
         toast({
           title: "Ошибка покупки",
           description: result.error || "Что-то пошло не так",
-          variant: "destructive"
+          variant: "error"
         })
       }
     } catch (error) {
       toast({
         title: "Ошибка",
         description: "Не удалось совершить покупку",
-        variant: "destructive"
+        variant: "error"
       })
     } finally {
       setPurchasing(null)

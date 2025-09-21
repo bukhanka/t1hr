@@ -3,10 +3,12 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { VectorizationService } from '@/lib/vectorization'
+import { SmartRankingService } from '@/lib/smart-ranking'
 import { z } from 'zod'
 
 const searchRequestSchema = z.object({
   query: z.string().min(1, 'Поисковый запрос не может быть пустым'),
+  positionType: z.enum(['TECHNICAL_ROLE', 'MANAGEMENT_ROLE', 'INNOVATIVE_PROJECT']).optional().default('TECHNICAL_ROLE'),
   filters: z.object({
     skills: z.array(z.string()).optional(),
     departments: z.array(z.string()).optional(),
@@ -44,14 +46,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { query, filters } = validation.data
+    const { query, positionType, filters } = validation.data
 
-    // Используем семантический поиск с векторными эмбеддингами
-    let searchResults = await VectorizationService.semanticSearch(query, 20, 0.3)
+    console.log(`🧠 Умный поиск талантов: "${query}" (тип: ${positionType})`)
+
+    // Используем новую композитную систему ранжирования
+    let searchResults = await SmartRankingService.searchTalentsWithCompositeRanking(
+      query, 
+      positionType as any, 
+      20
+    )
     
-    // Fallback на обычный поиск, если векторный поиск не дал результатов
+    // Fallback на старый поиск если новый не сработал
     if (!searchResults || searchResults.length === 0) {
-      console.log('Векторный поиск не дал результатов, используем fallback')
+      console.log('🔄 Композитный поиск не дал результатов, используем fallback')
       
       const profiles = await prisma.profile.findMany({
         where: {
@@ -77,11 +85,11 @@ export async function POST(request: NextRequest) {
       })
 
       // Простой алгоритм матчинга как fallback
-      const scoredProfiles = profiles.map(profile => {
+      const scoredProfiles = profiles.map((profile: any) => {
         let score = 0
         const queryLower = query.toLowerCase()
         
-        profile.userSkills.forEach(userSkill => {
+        profile.userSkills.forEach((userSkill: any) => {
           if (userSkill.skill.name.toLowerCase().includes(queryLower)) {
             score += userSkill.level * 10
             if (userSkill.isVerified) score += 5
@@ -91,7 +99,7 @@ export async function POST(request: NextRequest) {
         if (profile.jobTitle?.toLowerCase().includes(queryLower)) score += 20
         if (profile.department?.toLowerCase().includes(queryLower)) score += 15
 
-        profile.userProjects.forEach(userProject => {
+        profile.userProjects.forEach((userProject: any) => {
           if (userProject.achievements?.toLowerCase().includes(queryLower) ||
               userProject.project.name.toLowerCase().includes(queryLower)) {
             score += 10
@@ -103,8 +111,8 @@ export async function POST(request: NextRequest) {
           similarity: Math.min(1.0, score / 100), // Нормализуем в 0-1
           profile
         }
-      }).filter(result => result.similarity > 0.1)
-        .sort((a, b) => b.similarity - a.similarity)
+      }).filter((result: any) => result.similarity > 0.1)
+        .sort((a: any, b: any) => b.similarity - a.similarity)
         .slice(0, 20)
 
       searchResults = scoredProfiles
@@ -113,20 +121,20 @@ export async function POST(request: NextRequest) {
     // Дополнительная фильтрация результатов поиска
     let filteredResults = searchResults
 
-    if (filters?.skills && filters.skills.length > 0) {
-      filteredResults = searchResults.filter(result => {
+    if (filters?.skills && filters.skills.length > 0 && searchResults) {
+      filteredResults = searchResults.filter((result: any) => {
         const profileSkillNames = result.profile.userSkills.map((us: any) => 
           us.skill.name.toLowerCase()
         )
-        const matchedSkills = filters.skills?.filter(skill => 
+        const matchedSkills = filters.skills?.filter((skill: any) => 
           profileSkillNames.includes(skill.toLowerCase())
         ) || []
         return matchedSkills.length > 0
       })
     }
 
-    if (filters?.departments && filters.departments.length > 0) {
-      filteredResults = filteredResults.filter(result => 
+    if (filters?.departments && filters.departments.length > 0 && filteredResults) {
+      filteredResults = filteredResults.filter((result: any) => 
         filters.departments?.includes(result.profile.department) || false
       )
     }
@@ -134,35 +142,54 @@ export async function POST(request: NextRequest) {
     const sortedResults = filteredResults
 
     // Форматируем результаты для фронтенда
-    const formattedResults = sortedResults.map(({ profile, similarity }) => ({
-      id: profile.user.id,
-      name: profile.user.name,
-      email: session.user.role === 'HR' ? profile.user.email : undefined,
-      jobTitle: profile.jobTitle,
-      department: profile.department,
-      profileStrength: profile.profileStrength,
-      level: profile.level,
-      xp: profile.xp,
-      matchPercentage: Math.round(similarity * 100),
-      semanticSimilarity: similarity,
-      skills: profile.userSkills.slice(0, 6).map((us: any) => ({
-        name: us.skill.name,
-        level: us.level,
-        isVerified: us.isVerified
-      })),
-      recentProjects: profile.userProjects.slice(0, 2).map((up: any) => ({
-        name: up.project.name,
-        role: up.roleInProject,
-        achievements: up.achievements
-      })),
-      availability: 'available' // TODO: Реальная логика доступности
-    }))
+    const formattedResults = sortedResults?.map((result: any) => {
+      // Поддерживаем как новый формат (compositeScore), так и старый (similarity)
+      const score = result.compositeScore || result.similarity || 0
+      const profile = result.profile
+      
+      return {
+        id: profile.user?.id || profile.id,
+        name: profile.user?.name || profile.name,
+        email: session.user.role === 'HR' ? (profile.user?.email || profile.email) : undefined,
+        jobTitle: profile.jobTitle,
+        department: profile.department,
+        profileStrength: profile.profileStrength,
+        level: profile.level,
+        xp: profile.xp,
+        tCoins: profile.tCoins, // Добавляем T-Coins для анализа активности
+        matchPercentage: Math.round(score * 100),
+        semanticSimilarity: score,
+        
+        // Детализация композитного скора (если есть)
+        breakdown: result.breakdown ? {
+          hardSkills: Math.round(result.breakdown.hardSkillsScore * 100),
+          experience: Math.round(result.breakdown.experienceScore * 100),
+          careerAspiration: Math.round(result.breakdown.careerAspirationScore * 100),
+          potential: Math.round(result.breakdown.potentialScore * 100)
+        } : undefined,
+        
+        skills: (profile.userSkills || []).slice(0, 6).map((us: any) => ({
+          name: us.skill.name,
+          level: us.level,
+          isVerified: us.isVerified
+        })),
+        recentProjects: (profile.userProjects || []).slice(0, 2).map((up: any) => ({
+          name: up.project.name,
+          role: up.roleInProject,
+          achievements: up.achievements
+        })),
+        availability: 'available' // TODO: Реальная логика доступности
+      }
+    }) || []
 
     return NextResponse.json({
       results: formattedResults,
       total: formattedResults.length,
       query,
-      filters
+      positionType,
+      filters,
+      weights: SmartRankingService.WEIGHTS_CONFIGS[positionType as keyof typeof SmartRankingService.WEIGHTS_CONFIGS],
+      algorithm: formattedResults.some(r => r.breakdown) ? 'composite' : 'fallback'
     })
 
   } catch (error) {
@@ -207,8 +234,8 @@ export async function GET() {
     return NextResponse.json({
       filters: {
         skills: skills,
-        departments: departments.map(d => d.department).filter(Boolean),
-        jobTitles: jobTitles.map(j => j.jobTitle).filter(Boolean),
+        departments: departments.map((d: any) => d.department).filter(Boolean),
+        jobTitles: jobTitles.map((j: any) => j.jobTitle).filter(Boolean),
         levels: ['Junior', 'Middle', 'Senior', 'Expert']
       }
     })

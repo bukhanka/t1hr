@@ -193,7 +193,7 @@ async function updateProfileStrength(userId: string) {
   if (skillsCount > 0) strength += Math.min(30, skillsCount * 3)
 
   // Проекты и достижения (40%)
-  const projectsWithAchievements = profile.userProjects.filter(p => p.achievements)
+  const projectsWithAchievements = profile.userProjects.filter((p: any) => p.achievements)
   if (projectsWithAchievements.length > 0) {
     strength += Math.min(40, projectsWithAchievements.length * 8)
   }

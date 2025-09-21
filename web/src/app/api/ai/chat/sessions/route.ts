@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       take: 10
     })
 
-    const formattedSessions = chatSessions.map(session => ({
+    const formattedSessions = chatSessions.map((session: any) => ({
       id: session.id,
       title: session.title || 'Диалог с Навигатором',
       createdAt: session.createdAt.toISOString(),

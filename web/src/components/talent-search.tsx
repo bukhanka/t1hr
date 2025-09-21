@@ -26,8 +26,15 @@ interface TalentSearchResult {
   profileStrength: number
   level: number
   xp: number
+  tCoins?: number
   matchPercentage: number
   semanticSimilarity: number
+  breakdown?: {
+    hardSkills: number
+    experience: number
+    careerAspiration: number
+    potential: number
+  }
   skills: Array<{
     name: string
     level: number
@@ -46,6 +53,7 @@ interface SearchFilters {
   departments: string[]
   levels: string[]
   availability: 'available' | 'busy' | 'any'
+  positionType: 'TECHNICAL_ROLE' | 'MANAGEMENT_ROLE' | 'INNOVATIVE_PROJECT'
 }
 
 export function TalentSearch() {
@@ -65,7 +73,8 @@ export function TalentSearch() {
     skills: [],
     departments: [],
     levels: [],
-    availability: 'any'
+    availability: 'any',
+    positionType: 'TECHNICAL_ROLE'
   })
 
   // Проверяем статус эмбеддингов при загрузке
@@ -128,7 +137,13 @@ export function TalentSearch() {
         },
         body: JSON.stringify({
           query: query.trim(),
-          filters: filters
+          positionType: filters.positionType,
+          filters: {
+            skills: filters.skills,
+            departments: filters.departments,
+            levels: filters.levels,
+            availability: filters.availability
+          }
         })
       })
 
@@ -241,6 +256,28 @@ export function TalentSearch() {
                 )}
                 Найти
               </Button>
+            </div>
+
+            {/* Тип позиции */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">Тип позиции:</span>
+              <div className="flex gap-2">
+                {[
+                  { value: 'TECHNICAL_ROLE', label: '👨‍💻 Техническая', desc: 'Акцент на навыки' },
+                  { value: 'MANAGEMENT_ROLE', label: '👔 Управленческая', desc: 'Опыт + лидерство' },
+                  { value: 'INNOVATIVE_PROJECT', label: '🚀 Инновационная', desc: 'Потенциал + гибкость' }
+                ].map(type => (
+                  <Button
+                    key={type.value}
+                    variant={filters.positionType === type.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilters(prev => ({ ...prev, positionType: type.value as any }))}
+                    className="text-xs"
+                  >
+                    {type.label}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             {/* Быстрые запросы */}
@@ -373,7 +410,35 @@ export function TalentSearch() {
                               </span>
                             </div>
                             <span>Сила профиля: {candidate.profileStrength}%</span>
+                            {candidate.tCoins && (
+                              <span>💰 {candidate.tCoins} T-Coins</span>
+                            )}
                           </div>
+                          
+                          {/* Детализация композитного скора */}
+                          {candidate.breakdown && (
+                            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                              <div className="text-xs font-medium text-gray-600 mb-2">Детализация соответствия:</div>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="flex justify-between">
+                                  <span>Навыки:</span>
+                                  <span className="font-medium">{candidate.breakdown.hardSkills}%</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Опыт:</span>
+                                  <span className="font-medium">{candidate.breakdown.experience}%</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Цели:</span>
+                                  <span className="font-medium">{candidate.breakdown.careerAspiration}%</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Потенциал:</span>
+                                  <span className="font-medium">{candidate.breakdown.potential}%</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-col space-y-2 ml-4">
