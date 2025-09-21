@@ -60,6 +60,7 @@ model Profile {
   userId                String                 @unique
   jobTitle              String?
   department            String?
+  rotationStatus        RotationStatus         @default(STABLE)
   reportsToId           String?
   xp                    Int                    @default(0)
   level                 Int                    @default(1)
@@ -88,6 +89,9 @@ model Profile {
   mentorPrograms        UserMentorProgram[]
   userProjects          UserProject[]
   userSkills            UserSkill[]
+  managedProjects       Project[]             @relation("ProjectManager")
+  awardedTransactions   TCoinTransaction[]    @relation("TCoinAwarder")
+  tcoinPermissions      TCoinAwardPermission[] @relation("ManagerPermissions")
 }
 
 model Skill {
@@ -119,9 +123,13 @@ model Project {
   name         String        @unique
   description  String?
   status       ProjectStatus @default(ACTIVE)
+  managerId    String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  userProjects UserProject[]
+  manager           Profile?               @relation("ProjectManager", fields: [managerId], references: [id])
+  userProjects      UserProject[]
+  tcoinTransactions TCoinTransaction[]
+  awardPermissions  TCoinAwardPermission[]
 }
 
 model UserProject {
@@ -287,15 +295,34 @@ model UserMentorProgram {
 }
 
 model TCoinTransaction {
+  id            String   @id @default(cuid())
+  profileId     String
+  amount        Int
+  type          String
+  source        String
+  description   String
+  metadata      Json?
+  awardedById   String?  // ID профиля, который начислил коины
+  projectId     String?  // ID проекта, в рамках которого начислены коины
+  createdAt     DateTime @default(now())
+  profile       Profile  @relation(fields: [profileId], references: [id])
+  awardedBy     Profile? @relation("TCoinAwarder", fields: [awardedById], references: [id])
+  project       Project? @relation(fields: [projectId], references: [id])
+}
+
+model TCoinAwardPermission {
   id          String   @id @default(cuid())
-  profileId   String
-  amount      Int
-  type        String
-  source      String
-  description String
-  metadata    Json?
+  managerId   String   // ID менеджера, который может начислять коины
+  projectId   String?  // ID проекта (если null, то может начислять в любых проектах)
+  maxAmount   Int      @default(100) // Максимальная сумма единовременного начисления
+  dailyLimit  Int      @default(500) // Дневной лимит начислений
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
-  profile     Profile  @relation(fields: [profileId], references: [id])
+  updatedAt   DateTime @updatedAt
+  manager     Profile  @relation("ManagerPermissions", fields: [managerId], references: [id])
+  project     Project? @relation(fields: [projectId], references: [id])
+
+  @@unique([managerId, projectId])
 }
 
 model RewardItem {
@@ -396,6 +423,7 @@ enum Role {
   EMPLOYEE
   MANAGER
   HR
+  PROJECT_MANAGER
 }
 
 enum SkillStatus {
@@ -436,4 +464,9 @@ enum LearningStatus {
 enum MentorRole {
   MENTOR
   MENTEE
+}
+
+enum RotationStatus {
+  ROTATION    // Сотрудник в ротации - может видеть проекты/вакансии
+  STABLE      // Стабильная позиция - не показываем проекты/вакансии
 }

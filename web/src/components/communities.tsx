@@ -263,13 +263,8 @@ export function Communities() {
 
   return (
     <div className="space-y-6">
-      {/* Заголовок */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Сообщества</h2>
-          <p className="text-gray-600">Объединяйтесь с коллегами по интересам и навыкам</p>
-        </div>
-
+      {/* Кнопка создания */}
+      <div className="flex justify-end">
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2">

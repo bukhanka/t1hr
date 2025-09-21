@@ -204,117 +204,144 @@ export default async function EmployeeDashboard() {
         />
 
         {/* Прогресс профиля */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center space-x-2">
-              <Target className="h-5 w-5 text-green-600" />
-              <CardTitle>Мой Прогресс</CardTitle>
+        <Card className="bg-gradient-to-br from-emerald-50 to-teal-100/50 border-emerald-200/50 hover:shadow-lg transition-all duration-300">
+          <CardHeader className="pb-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-emerald-600 rounded-lg">
+                <Target className="h-5 w-5 text-white" />
+              </div>
+              <CardTitle className="text-emerald-900 font-semibold">Мой Прогресс</CardTitle>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium">Сила Профиля</span>
-                  <span className="text-sm text-muted-foreground">{profile.profileStrength}%</span>
-                </div>
-                <Progress value={profile.profileStrength} className="h-2" />
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-gray-700">Сила Профиля</span>
+                <span className="text-lg font-bold text-emerald-700">{profile.profileStrength}%</span>
               </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium">
-                    Уровень: {levelInfo.current?.title || 'Newcomer'}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {profile.xp}{levelInfo.next ? `/${levelInfo.next.minXp}` : ''} XP
-                  </span>
-                </div>
-                {levelInfo.next && (
+              <div className="relative">
+                <Progress 
+                  value={profile.profileStrength} 
+                  className="h-3 bg-emerald-100 rounded-full"
+                />
+                <div 
+                  className="absolute top-0 left-0 h-3 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${profile.profileStrength}%` }}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-gray-700">
+                  Уровень: {levelInfo.current?.title || 'Newcomer'}
+                </span>
+                <span className="text-sm font-medium text-emerald-600">
+                  {profile.xp}{levelInfo.next ? `/${levelInfo.next.minXp}` : ''} XP
+                </span>
+              </div>
+              {levelInfo.next && (
+                <div className="relative">
                   <Progress 
                     value={((profile.xp - levelInfo.current!.minXp) / (levelInfo.next.minXp - levelInfo.current!.minXp)) * 100} 
-                    className="h-2" 
+                    className="h-2 bg-teal-100"
                   />
-                )}
-              </div>
-
-              {nextBestAction && (
-                <div className="bg-yellow-50 p-3 rounded-lg">
-                  <div className="flex items-start space-x-2">
-                    <Zap className="h-4 w-4 text-yellow-600 mt-0.5" />
-                    <div>
-                      <p className="text-xs text-yellow-800 font-medium">
-                        Следующее лучшее действие:
-                      </p>
-                      <p className="text-xs text-yellow-700 mt-1">
-                        {nextBestAction}
-                      </p>
-                    </div>
-                  </div>
+                  <div 
+                    className="absolute top-0 left-0 h-2 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full transition-all duration-500"
+                    style={{ width: `${((profile.xp - levelInfo.current!.minXp) / (levelInfo.next.minXp - levelInfo.current!.minXp)) * 100}%` }}
+                  />
                 </div>
               )}
             </div>
+
+            {nextBestAction && (
+              <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4 shadow-sm">
+                <div className="flex items-start space-x-3">
+                  <div className="p-1 bg-yellow-500 rounded-md">
+                    <Zap className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-yellow-800 mb-1">
+                      Следующее лучшее действие:
+                    </p>
+                    <p className="text-sm text-yellow-700 leading-relaxed">
+                      {nextBestAction}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Статистика профиля */}
       <div className="grid gap-4 md:grid-cols-5">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Book className="h-4 w-4 text-blue-600" />
-              <div>
-                <p className="text-2xl font-bold">{skillsCount}</p>
-                <p className="text-xs text-muted-foreground">Навыков</p>
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200/50 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-blue-600 rounded-lg">
+                <Book className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold text-blue-900">{skillsCount}</p>
+                <p className="text-sm text-blue-700 font-medium">Навыков</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Award className="h-4 w-4 text-green-600" />
-              <div>
-                <p className="text-2xl font-bold">{verifiedSkillsCount}</p>
-                <p className="text-xs text-muted-foreground">Подтвержденных</p>
+        <Card className="bg-gradient-to-br from-green-50 to-green-100/50 border-green-200/50 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-green-600 rounded-lg">
+                <Award className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold text-green-900">{verifiedSkillsCount}</p>
+                <p className="text-sm text-green-700 font-medium">Подтвержденных</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-purple-600" />
-              <div>
-                <p className="text-2xl font-bold">{profile.userProjects.length}</p>
-                <p className="text-xs text-muted-foreground">Проектов</p>
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200/50 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-purple-600 rounded-lg">
+                <Calendar className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold text-purple-900">{profile.userProjects.length}</p>
+                <p className="text-sm text-purple-700 font-medium">Проектов</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Trophy className="h-4 w-4 text-yellow-600" />
-              <div>
-                <p className="text-2xl font-bold">{profile.badges.length}</p>
-                <p className="text-xs text-muted-foreground">Бейджей</p>
+        <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200/50 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-amber-600 rounded-lg">
+                <Trophy className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold text-amber-900">{profile.badges.length}</p>
+                <p className="text-sm text-amber-700 font-medium">Бейджей</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Coins className="h-4 w-4 text-yellow-600" />
-              <div>
-                <p className="text-2xl font-bold text-yellow-700">{profile.tCoins}</p>
-                <p className="text-xs text-muted-foreground">T-Coins</p>
+        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100/50 border-yellow-200/50 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-gradient-to-r from-yellow-600 to-orange-500 rounded-lg">
+                <Coins className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold bg-gradient-to-r from-yellow-700 to-orange-600 bg-clip-text text-transparent">{profile.tCoins}</p>
+                <p className="text-sm text-yellow-700 font-medium">T-Coins</p>
               </div>
             </div>
           </CardContent>
@@ -322,22 +349,30 @@ export default async function EmployeeDashboard() {
       </div>
 
       {/* Рекомендованные возможности - краткий превью */}
-      <Card>
-        <CardHeader>
+      <Card className="bg-gradient-to-br from-indigo-50 to-blue-50 border-indigo-200/50 hover:shadow-lg transition-all duration-300">
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-blue-600" />
-              <CardTitle>Рекомендованные Возможности</CardTitle>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-r from-indigo-600 to-blue-600 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-indigo-900">Рекомендованные Возможности</CardTitle>
+                <CardDescription className="text-indigo-700/70 mt-1">
+                  Персонализированные предложения для вашего карьерного развития
+                </CardDescription>
+              </div>
             </div>
             <Link href="/dashboard/employee/opportunities">
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-indigo-300 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-400"
+              >
                 Смотреть все
               </Button>
             </Link>
           </div>
-          <CardDescription>
-            Персонализированные предложения для вашего карьерного развития
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 md:grid-cols-2">
@@ -437,23 +472,25 @@ export default async function EmployeeDashboard() {
 
       {/* Недавние достижения */}
       {profile.badges.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center space-x-2">
-              <Trophy className="h-5 w-5 text-yellow-600" />
-              <CardTitle>Недавние Достижения</CardTitle>
+        <Card className="bg-gradient-to-br from-orange-50 to-yellow-50 border-orange-200/50 hover:shadow-lg transition-all duration-300">
+          <CardHeader className="pb-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-lg">
+                <Trophy className="h-5 w-5 text-white" />
+              </div>
+              <CardTitle className="text-orange-900">Недавние Достижения</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {profile.badges.slice(0, 3).map((userBadge: any) => (
-                <div key={userBadge.id} className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <Trophy className="w-4 h-4 text-yellow-600" />
+                <div key={userBadge.id} className="flex items-center space-x-4 p-3 bg-white/50 rounded-lg border border-orange-100 hover:bg-white/80 transition-colors">
+                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-md">
+                    <Trophy className="w-6 h-6 text-white" />
                   </div>
-                  <div>
-                    <p className="font-medium">Получен бейдж "{userBadge.badge.name}"</p>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">Получен бейдж "{userBadge.badge.name}"</p>
+                    <p className="text-sm text-gray-600 mt-1">
                       {userBadge.badge.description}
                     </p>
                   </div>
@@ -461,13 +498,13 @@ export default async function EmployeeDashboard() {
               ))}
               
               {projectsWithAchievements > 0 && (
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Star className="w-4 h-4 text-blue-600" />
+                <div className="flex items-center space-x-4 p-3 bg-white/50 rounded-lg border border-blue-100 hover:bg-white/80 transition-colors">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center shadow-md">
+                    <Star className="w-6 h-6 text-white" />
                   </div>
-                  <div>
-                    <p className="font-medium">+{profile.xp} XP набрано</p>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">+{profile.xp} XP набрано</p>
+                    <p className="text-sm text-gray-600 mt-1">
                       За активное развитие и заполнение профиля
                     </p>
                   </div>

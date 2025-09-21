@@ -6,6 +6,25 @@ import { VectorizationService } from '@/lib/vectorization'
 import { SmartRankingService } from '@/lib/smart-ranking'
 import { z } from 'zod'
 
+// Функция для определения доступности сотрудника
+function calculateAvailability(profile: any): 'available' | 'busy' | 'partially_available' {
+  // Считаем активные проекты (без даты окончания или закончившиеся недавно)
+  const now = new Date()
+  const recentThreshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 дней назад
+  
+  const activeProjects = profile.userProjects?.filter((up: any) => {
+    return !up.endDate || new Date(up.endDate) > recentThreshold
+  }) || []
+  
+  if (activeProjects.length === 0) {
+    return 'available'
+  } else if (activeProjects.length >= 3) {
+    return 'busy'
+  } else {
+    return 'partially_available'
+  }
+}
+
 const searchRequestSchema = z.object({
   query: z.string().min(1, 'Поисковый запрос не может быть пустым'),
   positionType: z.enum(['TECHNICAL_ROLE', 'MANAGEMENT_ROLE', 'INNOVATIVE_PROJECT']).optional().default('TECHNICAL_ROLE'),
@@ -178,7 +197,7 @@ export async function POST(request: NextRequest) {
           role: up.roleInProject,
           achievements: up.achievements
         })),
-        availability: 'available' // TODO: Реальная логика доступности
+        availability: calculateAvailability(profile)
       }
     }) || []
 

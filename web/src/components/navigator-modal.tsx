@@ -45,12 +45,27 @@ export function NavigatorModal({ isOpen, onOpenChange, triggerSource }: Navigato
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ 
+        behavior: "smooth",
+        block: "end",
+        inline: "nearest"
+      })
+    }, 100)
   }
 
   useEffect(() => {
-    scrollToBottom()
+    if (messages.length > 0) {
+      scrollToBottom()
+    }
   }, [messages])
+
+  // Дополнительно скроллим при загрузке и изменении isLoading
+  useEffect(() => {
+    if (!isLoading && messages.length > 0) {
+      scrollToBottom()
+    }
+  }, [isLoading])
 
   // Инициализация при открытии модального окна
   useEffect(() => {
@@ -293,7 +308,7 @@ ${contextMessage}
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[85vh] p-0">
+      <DialogContent className="max-w-6xl max-h-[90vh] w-[95vw] p-0">
         <DialogHeader className="p-4 pb-0 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -341,7 +356,7 @@ ${contextMessage}
           </div>
         </DialogHeader>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden min-h-0">
           {/* Sidebar с историей */}
           {showHistory && (
             <div className="w-56 border-r bg-gray-50/50 p-3">
@@ -371,7 +386,7 @@ ${contextMessage}
           )}
 
           {/* Основная область чата */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0">
             {isLoadingHistory ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
@@ -381,8 +396,17 @@ ${contextMessage}
               </div>
             ) : (
               <>
-                <div className="flex-1 overflow-y-auto p-4">
-                  <div className="space-y-3">
+                <div className="flex-1 overflow-y-auto p-4 min-h-0" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+                  <div className="flex flex-col space-y-3">
+                    {messages.length === 0 && !isLoading && (
+                      <div className="flex-1 flex items-center justify-center text-center py-8">
+                        <div>
+                          <Bot className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                          <p className="text-gray-500">Начните диалог с Навигатором</p>
+                        </div>
+                      </div>
+                    )}
+                    
                     {messages.map((message) => (
                       <div
                         key={message.id}
@@ -436,7 +460,7 @@ ${contextMessage}
                         </div>
                       </div>
                     )}
-                    <div ref={messagesEndRef} />
+                    <div ref={messagesEndRef} className="h-px" />
                   </div>
                 </div>
 

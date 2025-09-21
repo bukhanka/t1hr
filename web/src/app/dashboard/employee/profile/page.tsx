@@ -2,10 +2,14 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Role } from "@prisma/client"
+import { prisma } from "@/lib/prisma"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SkillsManager } from "@/components/skills-manager"
+import { CareerGoalsManager } from "@/components/career-goals-manager"
+import { ToastProvider } from "@/components/ui/use-toast"
 import { 
   User, 
   Briefcase, 
@@ -14,7 +18,9 @@ import {
   Plus,
   Settings,
   Star,
-  CheckCircle
+  CheckCircle,
+  Sparkles,
+  TrendingUp
 } from "lucide-react"
 
 export default async function EmployeeProfile() {
@@ -24,7 +30,40 @@ export default async function EmployeeProfile() {
     redirect("/dashboard")
   }
 
+  // Получаем полный профиль пользователя
+  const profile = await prisma.profile.findUnique({
+    where: { userId: session.user.id },
+    include: {
+      userSkills: {
+        include: { skill: true },
+        orderBy: { skill: { name: 'asc' } }
+      },
+      userProjects: {
+        include: { project: true },
+        orderBy: { updatedAt: 'desc' }
+      },
+      careerGoals: {
+        orderBy: { priority: 'desc' }
+      },
+      badges: {
+        include: { badge: true },
+        orderBy: { awardedAt: 'desc' },
+        take: 10
+      }
+    }
+  })
+
+  if (!profile) {
+    redirect("/dashboard")
+  }
+
+  const handleDataRefresh = () => {
+    // В серверном компоненте мы просто перезагружаем страницу
+    // В реальном приложении можно использовать revalidation
+  }
+
   return (
+    <ToastProvider>
     <div className="space-y-6">
       {/* Заголовок */}
       <div className="flex items-center justify-between">
@@ -52,81 +91,10 @@ export default async function EmployeeProfile() {
 
         {/* Компетенции и Навыки */}
         <TabsContent value="skills" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Мои Навыки</CardTitle>
-                  <CardDescription>
-                    Управляйте своими профессиональными компетенциями
-                  </CardDescription>
-                </div>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Добавить навык
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {/* Пример существующих навыков */}
-                <div className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold">JavaScript</h4>
-                    <Badge variant="secondary">5/5</Badge>
-                  </div>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="text-sm text-green-600">Подтвержден</span>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Badge>Использую</Badge>
-                    <Button size="sm" variant="outline">
-                      Запросить подтверждение
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold">React</h4>
-                    <Badge variant="secondary">4/5</Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground mb-2">
-                    Не подтвержден
-                  </div>
-                  <div className="flex space-x-2">
-                    <Badge>Использую</Badge>
-                    <Button size="sm" variant="outline">
-                      Запросить подтверждение
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold">Kotlin</h4>
-                    <Badge variant="outline">Цель</Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground mb-2">
-                    Планирую изучить
-                  </div>
-                  <div className="flex space-x-2">
-                    <Badge variant="secondary">Хочу изучить</Badge>
-                    <Button size="sm" variant="outline">
-                      Найти курсы
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Карточка добавления нового навыка */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-gray-400 cursor-pointer">
-                  <Plus className="h-8 w-8 text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600">Добавить новый навык</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <SkillsManager 
+            userSkills={profile.userSkills}
+            onSkillsUpdate={handleDataRefresh}
+          />
         </TabsContent>
 
         {/* Портфолио Проектов */}
@@ -205,60 +173,11 @@ export default async function EmployeeProfile() {
 
         {/* Карьерные Цели */}
         <TabsContent value="goals" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Мои Карьерные Цели</CardTitle>
-              <CardDescription>
-                Определите свои профессиональные амбиции и направления развития
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Целевая должность
-                    </label>
-                    <div className="border rounded-lg p-3 bg-gray-50">
-                      <p className="font-medium">Senior Frontend Developer</p>
-                      <p className="text-sm text-muted-foreground">
-                        Стремлюсь к экспертному уровню
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Интересующее направление
-                    </label>
-                    <div className="border rounded-lg p-3 bg-gray-50">
-                      <p className="font-medium">Frontend Architecture</p>
-                      <p className="text-sm text-muted-foreground">
-                        Архитектура фронтенд приложений
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Желаемый вектор развития
-                  </label>
-                  <div className="border rounded-lg p-3 bg-gray-50">
-                    <p className="font-medium">Экспертный</p>
-                    <p className="text-sm text-muted-foreground">
-                      Углубление в техническую экспертизу
-                    </p>
-                  </div>
-                </div>
-
-                <Button>
-                  <Target className="mr-2 h-4 w-4" />
-                  Изменить цели
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <CareerGoalsManager 
+            careerGoals={profile.careerGoals}
+            userSkills={profile.userSkills}
+            onGoalsUpdate={handleDataRefresh}
+          />
         </TabsContent>
 
         {/* Зал Славы */}
@@ -322,23 +241,30 @@ export default async function EmployeeProfile() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center p-3 border rounded-lg">
                       <span className="text-sm">Текущий уровень</span>
-                      <Badge>Middle</Badge>
+                      <Badge variant="secondary">Уровень {profile.level}</Badge>
                     </div>
                     <div className="flex justify-between items-center p-3 border rounded-lg">
                       <span className="text-sm">Общий XP</span>
-                      <span className="font-semibold">450</span>
+                      <span className="font-semibold text-blue-600">{profile.xp}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 border rounded-lg">
+                      <span className="text-sm">T-Coins</span>
+                      <span className="font-semibold text-green-600">{profile.tCoins}</span>
                     </div>
                     <div className="flex justify-between items-center p-3 border rounded-lg">
                       <span className="text-sm">Завершенных проектов</span>
-                      <span className="font-semibold">3</span>
+                      <span className="font-semibold">{profile.userProjects.length}</span>
                     </div>
                     <div className="flex justify-between items-center p-3 border rounded-lg">
                       <span className="text-sm">Подтвержденных навыков</span>
-                      <span className="font-semibold">8</span>
+                      <span className="font-semibold">{profile.userSkills.filter((us: any) => us.isVerified).length}</span>
                     </div>
                     <div className="flex justify-between items-center p-3 border rounded-lg">
-                      <span className="text-sm">В системе с</span>
-                      <span className="font-semibold">Января 2024</span>
+                      <span className="text-sm">Сила профиля</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-semibold">{profile.profileStrength}%</span>
+                        <TrendingUp className="w-4 h-4 text-green-600" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -348,5 +274,6 @@ export default async function EmployeeProfile() {
         </TabsContent>
       </Tabs>
     </div>
+    </ToastProvider>
   )
 }

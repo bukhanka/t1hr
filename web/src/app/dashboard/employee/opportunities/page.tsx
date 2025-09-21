@@ -1,7 +1,6 @@
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import { Role } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -21,13 +20,13 @@ import {
 export default async function OpportunitiesPage() {
   const session = await getServerSession(authOptions)
   
-  if (!session || session.user.role !== Role.EMPLOYEE) {
+  if (!session || (session.user as any)?.role !== 'EMPLOYEE') {
     redirect("/dashboard")
   }
 
   // Получаем профиль пользователя со всеми связанными данными
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: (session.user as any).id },
     include: {
       userSkills: {
         include: { skill: true }
@@ -49,18 +48,21 @@ export default async function OpportunitiesPage() {
     redirect("/dashboard/employee")
   }
 
+  // Проверяем статус ротации - проекты и вакансии показываем только тем, кто в ротации
+  const isInRotation = profile.rotationStatus === 'ROTATION'
+
   // Получаем рекомендации
   
   // 1. Курсы - которые соответствуют навыкам которые хочет изучить или карьерным целям
   const wantToLearnSkills = profile.userSkills
-    .filter(us => us.status === 'WANTS_TO_LEARN')
-    .map(us => us.skill.name.toLowerCase())
+    .filter((us: any) => us.status === 'WANTS_TO_LEARN')
+    .map((us: any) => us.skill.name.toLowerCase())
   
   const currentSkills = profile.userSkills
-    .filter(us => us.status === 'USING')
-    .map(us => us.skill.name.toLowerCase())
+    .filter((us: any) => us.status === 'USING')
+    .map((us: any) => us.skill.name.toLowerCase())
 
-  const enrolledCourseIds = profile.userCourses.map(uc => uc.courseId)
+  const enrolledCourseIds = profile.userCourses.map((uc: any) => uc.courseId)
 
   const recommendedCourses = await prisma.course.findMany({
     where: {
@@ -73,7 +75,7 @@ export default async function OpportunitiesPage() {
   })
 
   // 2. Менторские программы - которые помогают развивать нужные навыки
-  const participatingProgramIds = profile.mentorPrograms.map(ump => ump.programId)
+  const participatingProgramIds = profile.mentorPrograms.map((ump: any) => ump.programId)
   
   const recommendedMentorPrograms = await prisma.mentorProgram.findMany({
     where: {
@@ -85,10 +87,10 @@ export default async function OpportunitiesPage() {
     take: 4
   })
 
-  // 3. Проекты - в которых пользователь еще не участвовал
-  const currentProjectIds = profile.userProjects.map(up => up.projectId)
+  // 3. Проекты - в которых пользователь еще не участвовал (только для сотрудников в ротации)
+  const currentProjectIds = profile.userProjects.map((up: any) => up.projectId)
   
-  const recommendedProjects = await prisma.project.findMany({
+  const recommendedProjects = isInRotation ? await prisma.project.findMany({
     where: {
       status: 'ACTIVE',
       NOT: {
@@ -96,15 +98,15 @@ export default async function OpportunitiesPage() {
       }
     },
     take: 6
-  })
+  }) : []
 
-  // 4. Вакансии - соответствующие уровню и навыкам
-  const jobOpenings = await prisma.jobOpening.findMany({
+  // 4. Вакансии - соответствующие уровню и навыкам (только для сотрудников в ротации)
+  const jobOpenings = isInRotation ? await prisma.jobOpening.findMany({
     where: {
       status: 'OPEN'
     },
     take: 4
-  })
+  }) : []
 
   // 5. Популярные навыки, которых у пользователя нет
   const allSkills = await prisma.skill.findMany({
@@ -138,18 +140,26 @@ export default async function OpportunitiesPage() {
             <p className="text-muted-foreground">
               Персонализированные рекомендации для вашего карьерного развития
             </p>
+            {!isInRotation && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  <strong>Информация:</strong> Проекты и вакансии доступны только сотрудникам в программе ротации. 
+                  Вам доступны курсы, менторские программы и развитие навыков.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Фильтры/Табы по типам */}
       <Tabs defaultValue="all" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className={`grid w-full grid-cols-${isInRotation ? '6' : '4'}`}>
           <TabsTrigger value="all">Все</TabsTrigger>
           <TabsTrigger value="courses">Курсы</TabsTrigger>
           <TabsTrigger value="mentoring">Менторство</TabsTrigger>
-          <TabsTrigger value="projects">Проекты</TabsTrigger>
-          <TabsTrigger value="jobs">Вакансии</TabsTrigger>
+          {isInRotation && <TabsTrigger value="projects">Проекты</TabsTrigger>}
+          {isInRotation && <TabsTrigger value="jobs">Вакансии</TabsTrigger>}
           <TabsTrigger value="skills">Навыки</TabsTrigger>
         </TabsList>
 
@@ -162,7 +172,7 @@ export default async function OpportunitiesPage() {
               Рекомендованные курсы
             </h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {recommendedCourses.slice(0, 3).map((course) => (
+              {recommendedCourses.slice(0, 3).map((course: any) => (
                 <OpportunityCard
                   key={course.id}
                   id={course.id}
@@ -181,25 +191,27 @@ export default async function OpportunitiesPage() {
             </div>
           </div>
 
-          {/* Проекты */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <Briefcase className="h-5 w-5 mr-2 text-green-600" />
-              Интересные проекты
-            </h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {recommendedProjects.slice(0, 3).map((project) => (
-                <OpportunityCard
-                  key={project.id}
-                  id={project.id}
-                  title={project.name}
-                  description={project.description || "Интересный проект для применения ваших навыков"}
-                  type="project"
-                  actionText="Интересует"
-                />
-              ))}
+          {/* Проекты - только для сотрудников в ротации */}
+          {isInRotation && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <Briefcase className="h-5 w-5 mr-2 text-green-600" />
+                Интересные проекты
+              </h2>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {recommendedProjects.slice(0, 3).map((project: any) => (
+                  <OpportunityCard
+                    key={project.id}
+                    id={project.id}
+                    title={project.name}
+                    description={project.description || "Интересный проект для применения ваших навыков"}
+                    type="project"
+                    actionText="Интересует"
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Менторские программы */}
           <div>
@@ -208,7 +220,7 @@ export default async function OpportunitiesPage() {
               Менторские программы
             </h2>
             <div className="grid gap-4 md:grid-cols-2">
-              {recommendedMentorPrograms.slice(0, 2).map((program) => (
+                {recommendedMentorPrograms.slice(0, 2).map((program: any) => (
                 <OpportunityCard
                   key={program.id}
                   id={program.id}
@@ -225,29 +237,31 @@ export default async function OpportunitiesPage() {
             </div>
           </div>
 
-          {/* Вакансии */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2 text-orange-600" />
-              Карьерные возможности
-            </h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              {jobOpenings.slice(0, 2).map((job) => (
-                <OpportunityCard
-                  key={job.id}
-                  id={job.id}
-                  title={job.title}
-                  description={job.description}
-                  type="job"
-                  level={job.level}
-                  tags={job.requirements}
-                  requirements={job.requirements}
-                  department={job.department}
-                  actionText="Подать заявку"
-                />
-              ))}
+          {/* Вакансии - только для сотрудников в ротации */}
+          {isInRotation && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <TrendingUp className="h-5 w-5 mr-2 text-orange-600" />
+                Карьерные возможности
+              </h2>
+              <div className="grid gap-4 md:grid-cols-2">
+                {jobOpenings.slice(0, 2).map((job: any) => (
+                  <OpportunityCard
+                    key={job.id}
+                    id={job.id}
+                    title={job.title}
+                    description={job.description}
+                    type="job"
+                    level={job.level}
+                    tags={job.requirements}
+                    requirements={job.requirements}
+                    department={job.department}
+                    actionText="Подать заявку"
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Новые навыки */}
           <div>
@@ -256,7 +270,7 @@ export default async function OpportunitiesPage() {
               Навыки для изучения
             </h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {allSkills.slice(0, 4).map((skill) => (
+              {allSkills.slice(0, 4).map((skill: any) => (
                 <OpportunityCard
                   key={skill.id}
                   id={skill.id}
@@ -275,7 +289,7 @@ export default async function OpportunitiesPage() {
         {/* Отдельные табы для каждого типа */}
         <TabsContent value="courses" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {recommendedCourses.map((course) => (
+            {recommendedCourses.map((course: any) => (
               <OpportunityCard
                 key={course.id}
                 id={course.id}
@@ -296,7 +310,7 @@ export default async function OpportunitiesPage() {
 
         <TabsContent value="mentoring" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            {recommendedMentorPrograms.map((program) => (
+            {recommendedMentorPrograms.map((program: any) => (
               <OpportunityCard
                 key={program.id}
                 id={program.id}
@@ -313,43 +327,47 @@ export default async function OpportunitiesPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="projects" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {recommendedProjects.map((project) => (
-              <OpportunityCard
-                key={project.id}
-                id={project.id}
-                title={project.name}
-                description={project.description || "Интересный проект для применения ваших навыков"}
-                type="project"
-                actionText="Интересует"
-              />
-            ))}
-          </div>
-        </TabsContent>
+        {isInRotation && (
+          <TabsContent value="projects" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {recommendedProjects.map((project: any) => (
+                <OpportunityCard
+                  key={project.id}
+                  id={project.id}
+                  title={project.name}
+                  description={project.description || "Интересный проект для применения ваших навыков"}
+                  type="project"
+                  actionText="Интересует"
+                />
+              ))}
+            </div>
+          </TabsContent>
+        )}
 
-        <TabsContent value="jobs" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {jobOpenings.map((job) => (
-              <OpportunityCard
-                key={job.id}
-                id={job.id}
-                title={job.title}
-                description={job.description}
-                type="job"
-                level={job.level}
-                tags={job.requirements}
-                requirements={job.requirements}
-                department={job.department}
-                actionText="Подать заявку"
-              />
-            ))}
-          </div>
-        </TabsContent>
+        {isInRotation && (
+          <TabsContent value="jobs" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              {jobOpenings.map((job: any) => (
+                <OpportunityCard
+                  key={job.id}
+                  id={job.id}
+                  title={job.title}
+                  description={job.description}
+                  type="job"
+                  level={job.level}
+                  tags={job.requirements}
+                  requirements={job.requirements}
+                  department={job.department}
+                  actionText="Подать заявку"
+                />
+              ))}
+            </div>
+          </TabsContent>
+        )}
 
         <TabsContent value="skills" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {allSkills.map((skill) => (
+            {allSkills.map((skill: any) => (
               <OpportunityCard
                 key={skill.id}
                 id={skill.id}

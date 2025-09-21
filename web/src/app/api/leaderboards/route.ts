@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { LeaderboardType } from '@/lib/leaderboard'
 
 interface LeaderboardInfo {
@@ -82,13 +83,47 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Пробуем получить конфигурации из базы данных
+    const dbLeaderboards = await prisma.leaderboard.findMany({
+      where: {
+        validUntil: { gt: new Date() } // Только действующие
+      },
+      select: {
+        type: true,
+        period: true,
+        data: true
+      }
+    })
+
+    let leaderboardConfigs: LeaderboardInfo[] = []
+    
+    if (dbLeaderboards.length > 0) {
+      // Используем конфигурации из базы данных
+      leaderboardConfigs = dbLeaderboards.map(lb => {
+        const data = lb.data as any
+        const config = data.config || {}
+        
+        return {
+          type: lb.type as LeaderboardType,
+          title: config.title || lb.type,
+          description: config.description || '',
+          icon: config.icon || '🏆',
+          period: lb.period,
+          updateFrequency: config.updateFrequency || 'Обновляется периодически'
+        }
+      })
+    } else {
+      // Используем статичные конфигурации
+      leaderboardConfigs = LEADERBOARD_CONFIGS
+    }
+
     return NextResponse.json({
-      leaderboards: LEADERBOARD_CONFIGS,
-      total: LEADERBOARD_CONFIGS.length,
+      leaderboards: leaderboardConfigs,
+      total: leaderboardConfigs.length,
       categories: {
-        tcoins: LEADERBOARD_CONFIGS.filter(l => l.type.includes('tcoins')),
-        xp: LEADERBOARD_CONFIGS.filter(l => l.type.includes('xp')),
-        other: LEADERBOARD_CONFIGS.filter(l => !l.type.includes('tcoins') && !l.type.includes('xp'))
+        tcoins: leaderboardConfigs.filter(l => l.type.includes('tcoins')),
+        xp: leaderboardConfigs.filter(l => l.type.includes('xp')),
+        other: leaderboardConfigs.filter(l => !l.type.includes('tcoins') && !l.type.includes('xp'))
       }
     })
 

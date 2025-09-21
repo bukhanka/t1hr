@@ -9,6 +9,7 @@ export type GamificationEvent =
   | 'CAREER_GOAL_SET'
   | 'PROFILE_UPDATED'
   | 'CHAT_WITH_AI'
+  | 'MILESTONE_REACHED'
 
 type XPRewards = Record<GamificationEvent, number>
 
@@ -20,7 +21,8 @@ const XP_REWARDS: XPRewards = {
   PROJECT_ACHIEVEMENT_ADDED: 150,
   CAREER_GOAL_SET: 50,
   PROFILE_UPDATED: 25,
-  CHAT_WITH_AI: 10
+  CHAT_WITH_AI: 10,
+  MILESTONE_REACHED: 100
 }
 
 // T-Coins награды (параллельно с XP)
@@ -34,7 +36,8 @@ const TCOIN_REWARDS: TCoinRewards = {
   PROJECT_ACHIEVEMENT_ADDED: 100,
   CAREER_GOAL_SET: 50,
   PROFILE_UPDATED: 15,
-  CHAT_WITH_AI: 5
+  CHAT_WITH_AI: 5,
+  MILESTONE_REACHED: 75
 }
 
 // Таблица уровней и требований XP
@@ -132,7 +135,8 @@ export class GamificationService {
       'PROJECT_ACHIEVEMENT_ADDED': `Описание достижений (+${amount} T-Coins)`,
       'CAREER_GOAL_SET': `Постановка карьерной цели (+${amount} T-Coins)`,
       'PROFILE_UPDATED': `Обновление профиля (+${amount} T-Coins)`,
-      'CHAT_WITH_AI': `Общение с ИИ-навигатором (+${amount} T-Coins)`
+      'CHAT_WITH_AI': `Общение с ИИ-навигатором (+${amount} T-Coins)`,
+      'MILESTONE_REACHED': `Достижение этапа (+${amount} T-Coins)`
     }
     return descriptions[event] || `Активность: ${event} (+${amount} T-Coins)`
   }

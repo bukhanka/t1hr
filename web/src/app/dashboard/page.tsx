@@ -19,6 +19,8 @@ export default function DashboardPage() {
       redirect("/dashboard/manager")
     case Role.HR:
       redirect("/dashboard/hr")
+    case Role.PROJECT_MANAGER:
+      redirect("/dashboard/project-manager")
     default:
       redirect("/dashboard/employee")
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import rewardsCatalog from '@/data/rewards-catalog.json'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,20 +17,37 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
 
-    let filteredItems = rewardsCatalog.items
+    // Строим условия для фильтрации
+    const where: any = {
+      isActive: true,
+      inStock: true
+    }
 
     // Фильтрация по категории
     if (category && category !== 'all') {
-      filteredItems = rewardsCatalog.items.filter(item => item.category === category)
+      where.category = category
     }
 
-    // Показываем только доступные товары
-    filteredItems = filteredItems.filter(item => item.inStock)
+    // Получаем товары из базы данных
+    const items = await prisma.rewardItem.findMany({
+      where,
+      orderBy: [
+        { category: 'asc' },
+        { cost: 'asc' }
+      ]
+    })
+
+    // Категории
+    const categories = {
+      merch: 'Мерч T1',
+      development: 'Развитие',
+      privileges: 'Привилегии'
+    }
 
     return NextResponse.json({
-      categories: rewardsCatalog.categories,
-      items: filteredItems,
-      total: filteredItems.length
+      categories,
+      items,
+      total: items.length
     })
 
   } catch (error) {

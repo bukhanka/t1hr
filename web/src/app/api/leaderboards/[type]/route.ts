@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { LeaderboardService, LeaderboardType } from '@/lib/leaderboard'
 
 const VALID_TYPES: LeaderboardType[] = [
@@ -45,8 +46,30 @@ export async function GET(
       // Принудительно генерируем новый лидерборд
       leaderboard = await LeaderboardService.generateLeaderboard(type as LeaderboardType)
     } else {
-      // Используем кэшированный или генерируем новый
-      leaderboard = await LeaderboardService.getLeaderboard(type as LeaderboardType)
+      // Сначала пробуем получить из базы данных (seed данные)
+      const cachedLeaderboard = await prisma.leaderboard.findFirst({
+        where: { 
+          type,
+          validUntil: { gt: new Date() } // Еще не истек
+        },
+        orderBy: { generatedAt: 'desc' }
+      })
+
+      if (cachedLeaderboard && cachedLeaderboard.data) {
+        const data = cachedLeaderboard.data as any
+        
+        leaderboard = {
+          type: type as LeaderboardType,
+          period: cachedLeaderboard.period,
+          entries: data.entries || [],
+          totalParticipants: data.totalParticipants || data.entries?.length || 0,
+          generatedAt: cachedLeaderboard.generatedAt,
+          validUntil: cachedLeaderboard.validUntil || new Date()
+        }
+      } else {
+        // Генерируем новый через LeaderboardService
+        leaderboard = await LeaderboardService.generateLeaderboard(type as LeaderboardType)
+      }
     }
 
     if (!leaderboard) {
@@ -57,7 +80,7 @@ export async function GET(
     }
 
     // Находим позицию текущего пользователя
-    const currentUserPosition = leaderboard.entries.find(entry => entry.userId === session.user.id)
+    const currentUserPosition = leaderboard.entries.find((entry: any) => entry.userId === session.user.id)
     
     return NextResponse.json({
       ...leaderboard,

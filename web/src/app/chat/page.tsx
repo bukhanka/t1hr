@@ -12,6 +12,7 @@ import { Send, Loader2, Bot, History, ArrowLeft, TrendingUp, Target, Book, Users
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { TCoinRewardNotification } from '@/components/tcoin-reward-notification'
 
 interface Message {
   id: string
@@ -37,6 +38,12 @@ export default function FullscreenChat() {
   const [showHistory, setShowHistory] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [showTopics, setShowTopics] = useState(true)
+  const [rewardInfo, setRewardInfo] = useState<{
+    tcoinsEarned: number
+    xpEarned: number
+    newTotal: number
+    levelUp?: boolean
+  } | null>(null)
   
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -258,6 +265,11 @@ export default function FullscreenChat() {
                   await loadChatSessions()
                 }
 
+                // Обрабатываем информацию о наградах
+                if (data.rewards) {
+                  setRewardInfo(data.rewards)
+                }
+
                 if (data.error) {
                   console.error('Ошибка от сервера:', data.error)
                 }
@@ -367,6 +379,11 @@ export default function FullscreenChat() {
                   await loadChatSessions()
                 }
 
+                // Обрабатываем информацию о наградах
+                if (data.rewards) {
+                  setRewardInfo(data.rewards)
+                }
+
                 if (data.error) {
                   console.error('Ошибка от сервера:', data.error)
                 }
@@ -404,6 +421,10 @@ export default function FullscreenChat() {
     setShowHistory(false)
     setShowTopics(true)
     startWelcomeChat()
+  }
+
+  const handleRewardComplete = () => {
+    setRewardInfo(null)
   }
 
   if (status === "loading") {
@@ -623,6 +644,12 @@ export default function FullscreenChat() {
           )}
         </div>
       </div>
+
+      {/* Уведомление о наградах */}
+      <TCoinRewardNotification 
+        rewards={rewardInfo}
+        onComplete={handleRewardComplete}
+      />
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { openai, MODELS } from '@/lib/openai'
+import { GamificationService } from '@/lib/gamification'
 import { z } from 'zod'
 
 const chatRequestSchema = z.object({
@@ -435,11 +436,31 @@ export async function POST(request: NextRequest) {
             }
           })
 
-          // Отправляем финальное событие с sessionId
+          // 🪙 Начисляем T-коины и XP за общение с ИИ
+          console.log('🪙 Начисляем T-коины за общение с ИИ...')
+          const gamificationResult = await GamificationService.awardXP(
+            session.user.id, 
+            'CHAT_WITH_AI',
+            1
+          )
+
+          let rewardInfo = null
+          if (gamificationResult) {
+            console.log('✅ T-коины начислены:', gamificationResult)
+            rewardInfo = {
+              tcoinsEarned: gamificationResult.tcoinsAwarded,
+              xpEarned: gamificationResult.xpAwarded,
+              newTotal: gamificationResult.totalTCoins,
+              levelUp: gamificationResult.levelUp
+            }
+          }
+
+          // Отправляем финальное событие с sessionId и информацией о наградах
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ 
               done: true, 
-              sessionId: chatSession.id 
+              sessionId: chatSession.id,
+              rewards: rewardInfo
             })}\n\n`)
           )
           

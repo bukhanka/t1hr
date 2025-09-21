@@ -36,12 +36,14 @@ const roleLabels = {
   [Role.EMPLOYEE]: "Сотрудник",
   [Role.MANAGER]: "Менеджер",
   [Role.HR]: "HR-специалист",
+  [Role.PROJECT_MANAGER]: "Руководитель проекта",
 }
 
 const roleIcons = {
   [Role.EMPLOYEE]: User,
   [Role.MANAGER]: Users,
   [Role.HR]: BarChart3,
+  [Role.PROJECT_MANAGER]: Users,
 }
 
 export function Navigation({ user }: NavigationProps) {
@@ -65,7 +67,12 @@ export function Navigation({ user }: NavigationProps) {
       case Role.HR:
         return [
           { href: "/dashboard/hr", label: "HR-Аналитика" },
+          { href: "/dashboard/hr/rotation", label: "Управление Ротацией" },
           { href: "/dashboard/hr/reports", label: "Отчеты" },
+        ]
+      case Role.PROJECT_MANAGER:
+        return [
+          { href: "/dashboard/project-manager", label: "Управление Проектами" },
         ]
       default:
         return []

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { GamificationService } from '@/lib/gamification'
-import rewardsCatalog from '@/data/rewards-catalog.json'
+import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const purchaseSchema = z.object({
@@ -33,8 +33,11 @@ export async function POST(request: NextRequest) {
 
     const { itemId, quantity } = validation.data
 
-    // Найти товар в каталоге
-    const item = rewardsCatalog.items.find(i => i.id === itemId)
+    // Найти товар в базе данных
+    const item = await prisma.rewardItem.findUnique({
+      where: { id: itemId }
+    })
+    
     if (!item) {
       return NextResponse.json(
         { error: 'Товар не найден' },
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!item.inStock) {
+    if (!item.inStock || !item.isActive) {
       return NextResponse.json(
         { error: 'Товар недоступен' },
         { status: 400 }

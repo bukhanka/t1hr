@@ -136,56 +136,126 @@ export default function SignIn() {
 
           {/* Demo quick login buttons */}
           <div className="mt-4 space-y-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full justify-start h-12"
-              onClick={() => handleDemoLogin('ivan.petrov@company.com', 'Иван Петров')}
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 text-sm font-medium">👨‍💻</span>
+            <div className="text-sm font-medium text-gray-700 mb-2">🚀 Демо-аккаунты для презентации:</div>
+            
+            {/* Основные роли */}
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start h-12 border-blue-200 hover:bg-blue-50"
+                onClick={() => handleDemoLogin('demo.employee@company.com', 'Демо Сотрудник')}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-blue-600 text-sm font-medium">👨‍💻</span>
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium">Демо Сотрудник</p>
+                    <p className="text-sm text-muted-foreground">Senior Full-Stack Developer</p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <p className="font-medium">Сотрудник</p>
-                  <p className="text-sm text-muted-foreground">Иван Петров</p>
-                </div>
-              </div>
-            </Button>
+              </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full justify-start h-12"
-              onClick={() => handleDemoLogin('svetlana.manager@company.com', 'Светлана Менеджерова')}
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 text-sm font-medium">👨‍💼</span>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start h-12 border-green-200 hover:bg-green-50"
+                onClick={() => handleDemoLogin('demo.manager@company.com', 'Демо Менеджер')}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <span className="text-green-600 text-sm font-medium">👨‍💼</span>
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium">Демо Менеджер</p>
+                    <p className="text-sm text-muted-foreground">Engineering Manager</p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <p className="font-medium">Менеджер</p>
-                  <p className="text-sm text-muted-foreground">Светлана Менеджерова</p>
-                </div>
-              </div>
-            </Button>
+              </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full justify-start h-12"
-              onClick={() => handleDemoLogin('ekaterina.hr@company.com', 'Екатерина HR-специалист')}
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <span className="text-purple-600 text-sm font-medium">👩‍💼</span>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start h-12 border-purple-200 hover:bg-purple-50"
+                onClick={() => handleDemoLogin('demo.hr@company.com', 'Демо HR')}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                    <span className="text-purple-600 text-sm font-medium">👩‍💼</span>
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium">Демо HR</p>
+                    <p className="text-sm text-muted-foreground">HR Business Partner</p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <p className="font-medium">HR-специалист</p>
-                  <p className="text-sm text-muted-foreground">Екатерина HR-специалист</p>
+              </Button>
+            </div>
+
+            <div className="text-sm font-medium text-gray-700 mb-2 mt-4">👥 Дополнительные роли:</div>
+            
+            {/* Дополнительные роли */}
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start h-10 text-sm"
+                onClick={() => handleDemoLogin('ivan.petrov@company.com', 'Иван Петров')}
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-blue-600">🎨</span>
+                  <span>Иван Петров - Senior Frontend</span>
                 </div>
-              </div>
-            </Button>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start h-10 text-sm"
+                onClick={() => handleDemoLogin('olga.nikolaeva@company.com', 'Ольга Николаева')}
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-purple-600">📊</span>
+                  <span>Ольга Николаева - Data Scientist</span>
+                </div>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start h-10 text-sm"
+                onClick={() => handleDemoLogin('mikhail.fedorov@company.com', 'Михаил Федоров')}
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-orange-600">⚙️</span>
+                  <span>Михаил Федоров - DevOps</span>
+                </div>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start h-10 text-sm"
+                onClick={() => handleDemoLogin('anna.morozova@company.com', 'Анна Морозова')}
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-green-600">🌱</span>
+                  <span>Анна Морозова - Junior Frontend</span>
+                </div>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start h-10 text-sm"
+                onClick={() => handleDemoLogin('vladimir.senior@company.com', 'Владимир Сеньоров')}
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-red-600">🏆</span>
+                  <span>Владимир Сеньоров - Principal Engineer</span>
+                </div>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { EmbeddingManager } from "@/components/embedding-manager"
+import { TalentSearchComponent } from "@/components/talent-search-component"
 import { 
   BarChart3,
   TrendingUp,
@@ -17,8 +18,34 @@ import {
   AlertTriangle,
   CheckCircle,
   FileText,
-  PieChart
+  PieChart,
+  Search
 } from "lucide-react"
+
+async function fetchHRAnalytics() {
+  try {
+    const [analyticsResponse, skillGapsResponse] = await Promise.all([
+      fetch(`${process.env.NEXTAUTH_URL}/api/hr/analytics`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }),
+      fetch(`${process.env.NEXTAUTH_URL}/api/hr/skill-gaps`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+    ])
+
+    const analytics = analyticsResponse.ok ? await analyticsResponse.json() : null
+    const skillGaps = skillGapsResponse.ok ? await skillGapsResponse.json() : null
+
+    return { analytics, skillGaps }
+  } catch (error) {
+    console.error('Ошибка при получении HR аналитики:', error)
+    return { analytics: null, skillGaps: null }
+  }
+}
 
 export default async function HRDashboard() {
   const session = await getServerSession(authOptions)
@@ -26,6 +53,9 @@ export default async function HRDashboard() {
   if (!session || session.user.role !== Role.HR) {
     redirect("/dashboard")
   }
+
+  // Получаем реальные данные из API
+  const { analytics, skillGaps } = await fetchHRAnalytics()
 
   return (
     <div className="space-y-6">
@@ -40,6 +70,18 @@ export default async function HRDashboard() {
           </p>
         </div>
         <div className="flex space-x-2">
+          <Button variant="outline" asChild>
+            <a href="/dashboard/hr/rotation">
+              <Users className="mr-2 h-4 w-4" />
+              Управление Ротацией
+            </a>
+          </Button>
+          <Button variant="outline" asChild>
+            <a href="/dashboard/hr/tcoin-permissions">
+              <Award className="mr-2 h-4 w-4" />
+              T-коины
+            </a>
+          </Button>
           <Button variant="outline">
             <FileText className="mr-2 h-4 w-4" />
             Экспорт отчета
@@ -61,11 +103,11 @@ export default async function HRDashboard() {
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">78%</div>
+            <div className="text-2xl font-bold">{analytics?.profileHealth?.healthyProfilesPercentage || 0}%</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+5%</span> за месяц
+              Средняя сила: {analytics?.profileHealth?.averageStrength || 0}%
             </p>
-            <Progress value={78} className="mt-2 h-2" />
+            <Progress value={analytics?.profileHealth?.healthyProfilesPercentage || 0} className="mt-2 h-2" />
           </CardContent>
         </Card>
 
@@ -77,27 +119,38 @@ export default async function HRDashboard() {
             <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">85%</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+2%</span> за месяц
-            </p>
-            <Progress value={85} className="mt-2 h-2" />
+            {analytics?.engagement && analytics.engagement.length > 0 ? (
+              <>
+                <div className="text-2xl font-bold">
+                  {Math.round(analytics.engagement.reduce((acc: number, dept: any) => acc + dept.engagementRate, 0) / analytics.engagement.length)}%
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Активных: {analytics.engagement.reduce((acc: number, dept: any) => acc + dept.activeEmployees, 0)} сотрудников
+                </p>
+                <Progress value={Math.round(analytics.engagement.reduce((acc: number, dept: any) => acc + dept.engagementRate, 0) / analytics.engagement.length)} className="mt-2 h-2" />
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">--</div>
+                <p className="text-xs text-muted-foreground">Нет данных</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Индекс Кадрового Риска
+              Завершение Онбординга
             </CardTitle>
             <AlertTriangle className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12%</div>
+            <div className="text-2xl font-bold">{analytics?.onboarding?.completionRate || 0}%</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-red-600">+1%</span> за месяц
+              {analytics?.onboarding?.pendingCount || 0} в процессе
             </p>
-            <Progress value={12} className="mt-2 h-2" />
+            <Progress value={analytics?.onboarding?.completionRate || 0} className="mt-2 h-2" />
           </CardContent>
         </Card>
 
@@ -109,9 +162,9 @@ export default async function HRDashboard() {
             <BarChart3 className="h-4 w-4 text-gray-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">342</div>
+            <div className="text-2xl font-bold">{analytics?.overview?.totalEmployees || 0}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+8</span> за месяц
+              Средний уровень: {analytics?.overview?.averageLevel || 0}
             </p>
           </CardContent>
         </Card>
@@ -130,24 +183,46 @@ export default async function HRDashboard() {
             <div>
               <h4 className="font-semibold mb-2">Топ популярных навыков:</h4>
               <div className="flex flex-wrap gap-2">
-                <Badge className="bg-green-100 text-green-800">JavaScript (95 чел.)</Badge>
-                <Badge className="bg-green-100 text-green-800">React (78 чел.)</Badge>
-                <Badge className="bg-blue-100 text-blue-800">Java (65 чел.)</Badge>
-                <Badge className="bg-blue-100 text-blue-800">Python (52 чел.)</Badge>
-                <Badge className="bg-purple-100 text-purple-800">SQL (89 чел.)</Badge>
+                {analytics?.skills?.topPopular?.slice(0, 8).map((skill: any) => (
+                  <Badge key={skill.name} className="bg-green-100 text-green-800">
+                    {skill.name} ({skill.userCount} чел.)
+                    {skill.verifiedCount > 0 && <span className="ml-1 text-xs">✓{skill.verifiedCount}</span>}
+                  </Badge>
+                )) || [
+                  <Badge key="loading" className="bg-gray-100 text-gray-800">Загрузка...</Badge>
+                ]}
               </div>
             </div>
             
             <div>
               <h4 className="font-semibold mb-2">Редкие/ценные навыки:</h4>
               <div className="flex flex-wrap gap-2">
-                <Badge className="bg-red-100 text-red-800">Rust (3 чел.)</Badge>
-                <Badge className="bg-red-100 text-red-800">Blockchain (5 чел.)</Badge>
-                <Badge className="bg-orange-100 text-orange-800">Machine Learning (12 чел.)</Badge>
-                <Badge className="bg-orange-100 text-orange-800">DevOps (18 чел.)</Badge>
+                {analytics?.skills?.rareSkills?.slice(0, 8).map((skill: any) => (
+                  <Badge key={skill.name} className="bg-red-100 text-red-800">
+                    {skill.name} ({skill.userCount} чел.)
+                  </Badge>
+                )) || [
+                  <Badge key="loading" className="bg-gray-100 text-gray-800">Загрузка...</Badge>
+                ]}
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Умный поиск талантов */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5 text-blue-600" />
+            Поиск и Подбор Талантов
+          </CardTitle>
+          <CardDescription>
+            Найдите подходящих кандидатов для проектов и позиций с помощью ИИ
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TalentSearchComponent />
         </CardContent>
       </Card>
 
@@ -165,38 +240,27 @@ export default async function HRDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Middle → Senior Frontend:</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">TypeScript (продвинутый)</span>
-                    <Badge variant="outline">Нужно 23 чел.</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Архитектура приложений</span>
-                    <Badge variant="outline">Нужно 31 чел.</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Менторство</span>
-                    <Badge variant="outline">Нужно 18 чел.</Badge>
+            {skillGaps?.levelProgressionGaps && Object.keys(skillGaps.levelProgressionGaps).length > 0 ? (
+              Object.entries(skillGaps.levelProgressionGaps).slice(0, 3).map(([transition, gaps]: [string, any]) => (
+                <div key={transition}>
+                  <h4 className="font-medium mb-2">{transition}:</h4>
+                  <div className="space-y-2">
+                    {gaps.slice(0, 3).map((gap: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between">
+                        <span className="text-sm">{gap.skill}</span>
+                        <Badge variant="outline">Нужно {gap.gapSize} чел.</Badge>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-              
+              ))
+            ) : (
               <div>
-                <h4 className="font-medium mb-2">Middle → Senior Backend:</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Системный дизайн</span>
-                    <Badge variant="outline">Нужно 28 чел.</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Микросервисы</span>
-                    <Badge variant="outline">Нужно 35 чел.</Badge>
-                  </div>
-                </div>
+                <h4 className="font-medium mb-2">Анализ разрывов:</h4>
+                <p className="text-sm text-muted-foreground">Данные загружаются...</p>
               </div>
-            </div>
+            )}
+          </div>
             <Button className="mt-4" variant="outline">
               Подробный анализ
             </Button>
@@ -215,34 +279,27 @@ export default async function HRDashboard() {
               <div>
                 <h4 className="font-medium mb-2">Топ желанных должностей:</h4>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Senior Developer</span>
-                    <Badge>47 чел.</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Team Lead</span>
-                    <Badge>32 чел.</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Product Manager</span>
-                    <Badge>18 чел.</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Architect</span>
-                    <Badge>15 чел.</Badge>
-                  </div>
+                  {analytics?.careerGoals?.popular?.slice(0, 5).map((goal: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between">
+                      <span className="text-sm">{goal.target}</span>
+                      <Badge>{goal.count} чел.</Badge>
+                    </div>
+                  )) || (
+                    <p className="text-sm text-muted-foreground">Данные загружаются...</p>
+                  )}
                 </div>
               </div>
 
               <div>
                 <h4 className="font-medium mb-2">Направления развития:</h4>
                 <div className="flex flex-wrap gap-2">
-                  <Badge className="bg-blue-100 text-blue-800">
-                    Экспертный рост (68%)
-                  </Badge>
-                  <Badge className="bg-green-100 text-green-800">
-                    Менеджерский (32%)
-                  </Badge>
+                  {skillGaps?.careerAmbitionsVsSkills?.slice(0, 3).map((career: any, idx: number) => (
+                    <Badge key={idx} className="bg-blue-100 text-blue-800">
+                      {career.goalType}: {career.interestedEmployees} чел.
+                    </Badge>
+                  )) || (
+                    <Badge className="bg-gray-100 text-gray-800">Данные загружаются...</Badge>
+                  )}
                 </div>
               </div>
             </div>
@@ -264,55 +321,51 @@ export default async function HRDashboard() {
         <CardContent>
           <div className="space-y-4">
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">IT Отдел</h4>
-                  <TrendingUp className="h-4 w-4 text-green-600" />
+              {analytics?.engagement?.slice(0, 3).map((dept: any, idx: number) => {
+                const trendIcon = dept.engagementRate >= 75 
+                  ? <TrendingUp className="h-4 w-4 text-green-600" />
+                  : dept.engagementRate >= 50
+                  ? <div className="h-4 w-4 text-yellow-600">→</div>
+                  : <TrendingDown className="h-4 w-4 text-red-600" />
+                
+                return (
+                  <div key={idx} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold">{dept.department}</h4>
+                      {trendIcon}
+                    </div>
+                    <div className="text-2xl font-bold mb-1">{dept.engagementRate}%</div>
+                    <p className="text-sm text-muted-foreground">
+                      Активных: {dept.activeEmployees}/{dept.totalEmployees}
+                    </p>
+                    <Progress value={dept.engagementRate} className="mt-2 h-2" />
+                  </div>
+                )
+              }) || (
+                <div className="col-span-3 text-center text-muted-foreground">
+                  Данные по вовлеченности загружаются...
                 </div>
-                <div className="text-2xl font-bold mb-1">92%</div>
-                <p className="text-sm text-muted-foreground">
-                  Активность: отличная
-                </p>
-                <Progress value={92} className="mt-2 h-2" />
-              </div>
-
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">Маркетинг</h4>
-                  <TrendingDown className="h-4 w-4 text-red-600" />
-                </div>
-                <div className="text-2xl font-bold mb-1">54%</div>
-                <p className="text-sm text-muted-foreground">
-                  Активность: упала
-                </p>
-                <Progress value={54} className="mt-2 h-2" />
-              </div>
-
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">Продажи</h4>
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                </div>
-                <div className="text-2xl font-bold mb-1">78%</div>
-                <p className="text-sm text-muted-foreground">
-                  Активность: растет
-                </p>
-                <Progress value={78} className="mt-2 h-2" />
-              </div>
+              )}
             </div>
 
-            <div className="bg-orange-50 p-4 rounded-lg">
-              <div className="flex items-start space-x-2">
-                <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
-                <div>
-                  <p className="font-medium text-orange-800">Внимание</p>
-                  <p className="text-sm text-orange-700">
-                    В отделе маркетинга резко упала активность после смены руководителя. 
-                    Рекомендуется провести интервью с командой.
-                  </p>
+            {/* Рекомендации на основе реальных данных */}
+            {skillGaps?.recommendations && skillGaps.recommendations.length > 0 && (
+              <div className="bg-orange-50 p-4 rounded-lg">
+                <div className="flex items-start space-x-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-orange-800">Рекомендации</p>
+                    <div className="space-y-2 mt-2">
+                      {skillGaps.recommendations.slice(0, 2).map((rec: any, idx: number) => (
+                        <p key={idx} className="text-sm text-orange-700">
+                          • {rec.message}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -326,11 +379,11 @@ export default async function HRDashboard() {
           <div className="grid md:grid-cols-2 gap-4">
             <Button variant="outline" className="justify-start">
               <Target className="mr-2 h-4 w-4" />
-              Создать программу "Путь к Senior"
+              Создать программу развития навыков
             </Button>
             <Button variant="outline" className="justify-start">
               <Award className="mr-2 h-4 w-4" />
-              Запустить кампанию по заполнению профилей
+              Кампания: завершение онбординга ({analytics?.onboarding?.pendingCount || 0} чел.)
             </Button>
             <Button variant="outline" className="justify-start">
               <Users className="mr-2 h-4 w-4" />

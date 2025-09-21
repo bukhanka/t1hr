@@ -15,7 +15,8 @@ import {
   Bookmark,
   Loader2,
   AlertCircle,
-  Users
+  Users,
+  Plus
 } from 'lucide-react'
 
 interface TalentSearchResult {
@@ -52,7 +53,7 @@ interface SearchFilters {
   skills: string[]
   departments: string[]
   levels: string[]
-  availability: 'available' | 'busy' | 'any'
+  availability: 'available' | 'busy' | 'partially_available' | 'any'
   positionType: 'TECHNICAL_ROLE' | 'MANAGEMENT_ROLE' | 'INNOVATIVE_PROJECT'
 }
 
@@ -62,6 +63,9 @@ export function TalentSearch() {
   const [isLoading, setIsLoading] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [shortlists, setShortlists] = useState<Array<{id: string, title: string}>>([])
+  const [showShortlistModal, setShowShortlistModal] = useState(false)
+  const [selectedCandidate, setSelectedCandidate] = useState<TalentSearchResult | null>(null)
   const [embeddingStatus, setEmbeddingStatus] = useState<{
     profilesWithEmbeddings: number
     totalProfiles: number
@@ -80,7 +84,23 @@ export function TalentSearch() {
   // Проверяем статус эмбеддингов при загрузке
   useEffect(() => {
     checkEmbeddingStatus()
+    loadShortlists()
   }, [])
+
+  const loadShortlists = async () => {
+    try {
+      const response = await fetch('/api/shortlists')
+      if (response.ok) {
+        const data = await response.json()
+        setShortlists(data.shortlists.map((sl: any) => ({
+          id: sl.id,
+          title: sl.title
+        })))
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке шорт-листов:', error)
+    }
+  }
 
   const checkEmbeddingStatus = async () => {
     try {
@@ -171,7 +191,8 @@ export function TalentSearch() {
   const getAvailabilityColor = (availability: string) => {
     switch (availability) {
       case 'available': return 'text-green-600'
-      case 'busy': return 'text-orange-600'
+      case 'partially_available': return 'text-yellow-600'
+      case 'busy': return 'text-red-600'
       default: return 'text-gray-600'
     }
   }
@@ -179,7 +200,8 @@ export function TalentSearch() {
   const getAvailabilityIcon = (availability: string) => {
     switch (availability) {
       case 'available': return CheckCircle
-      case 'busy': return Star
+      case 'partially_available': return Star
+      case 'busy': return AlertCircle
       default: return AlertCircle
     }
   }
@@ -188,6 +210,39 @@ export function TalentSearch() {
     if (percentage >= 80) return 'bg-green-100 text-green-800'
     if (percentage >= 60) return 'bg-yellow-100 text-yellow-800'
     return 'bg-blue-100 text-blue-800'
+  }
+
+  const addToShortlist = async (shortlistId: string, candidate: TalentSearchResult, notes?: string) => {
+    try {
+      const response = await fetch(`/api/shortlists/${shortlistId}/candidates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          profileId: candidate.id,
+          notes: notes || ''
+        })
+      })
+
+      if (response.ok) {
+        setShowShortlistModal(false)
+        setSelectedCandidate(null)
+        // Показываем уведомление об успехе
+        alert(`${candidate.name} добавлен в шорт-лист!`)
+      } else {
+        const error = await response.json()
+        alert(`Ошибка: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Ошибка при добавлении в шорт-лист:', error)
+      alert('Ошибка при добавлении в шорт-лист')
+    }
+  }
+
+  const openShortlistModal = (candidate: TalentSearchResult) => {
+    setSelectedCandidate(candidate)
+    setShowShortlistModal(true)
   }
 
   return (
@@ -405,7 +460,8 @@ export function TalentSearch() {
                               <AvailabilityIcon className={`h-4 w-4 ${getAvailabilityColor(candidate.availability)}`} />
                               <span>
                                 {candidate.availability === 'available' ? 'Доступен для новых задач' :
-                                 candidate.availability === 'busy' ? 'Занят на проекте' :
+                                 candidate.availability === 'partially_available' ? 'Частично доступен' :
+                                 candidate.availability === 'busy' ? 'Занят на проектах' :
                                  'Статус неизвестен'}
                               </span>
                             </div>
@@ -442,7 +498,10 @@ export function TalentSearch() {
                         </div>
                       </div>
                       <div className="flex flex-col space-y-2 ml-4">
-                        <Button size="sm">
+                        <Button 
+                          size="sm" 
+                          onClick={() => openShortlistModal(candidate)}
+                        >
                           <Bookmark className="mr-2 h-4 w-4" />
                           В шорт-лист
                         </Button>
@@ -480,6 +539,70 @@ export function TalentSearch() {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Модальное окно добавления в шорт-лист */}
+      {showShortlistModal && selectedCandidate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">
+              Добавить в шорт-лист: {selectedCandidate.name}
+            </h3>
+            
+            {shortlists.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-gray-600 mb-4">
+                  У вас нет ни одного шорт-листа
+                </p>
+                <Button asChild>
+                  <a href="/dashboard/manager/shortlists">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Создать шорт-лист
+                  </a>
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600 mb-3">
+                  Выберите шорт-лист для добавления кандидата:
+                </p>
+                
+                {shortlists.map((shortlist) => (
+                  <Button
+                    key={shortlist.id}
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => addToShortlist(shortlist.id, selectedCandidate)}
+                  >
+                    <Bookmark className="mr-2 h-4 w-4" />
+                    {shortlist.title}
+                  </Button>
+                ))}
+                
+                <div className="flex justify-between pt-4 border-t">
+                  <Button asChild variant="outline">
+                    <a href="/dashboard/manager/shortlists">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Создать новый
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowShortlistModal(false)
+                  setSelectedCandidate(null)
+                }}
+              >
+                Отмена
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

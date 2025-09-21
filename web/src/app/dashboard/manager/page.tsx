@@ -25,9 +25,11 @@ export default async function ManagerDashboard() {
             Находите идеальных кандидатов для ваших проектов за минуты, а не дни
           </p>
         </div>
-        <Button>
-          <Users className="mr-2 h-4 w-4" />
-          Мои шорт-листы
+        <Button asChild>
+          <a href="/dashboard/manager/shortlists">
+            <Users className="mr-2 h-4 w-4" />
+            Мои шорт-листы
+          </a>
         </Button>
       </div>
 

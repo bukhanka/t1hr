@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { MessageCircle, Send, Loader2, User, Bot } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { TCoinRewardNotification } from '@/components/tcoin-reward-notification'
 
 interface Message {
   id: string
@@ -26,6 +27,12 @@ export function AIChatWindow({ className }: AIChatWindowProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
+  const [rewardInfo, setRewardInfo] = useState<{
+    tcoinsEarned: number
+    xpEarned: number
+    newTotal: number
+    levelUp?: boolean
+  } | null>(null)
   
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -106,6 +113,11 @@ export function AIChatWindow({ className }: AIChatWindowProps) {
                   setSessionId(data.sessionId)
                 }
 
+                // Обрабатываем информацию о наградах
+                if (data.rewards) {
+                  setRewardInfo(data.rewards)
+                }
+
                 if (data.error) {
                   console.error('Ошибка от сервера:', data.error)
                 }
@@ -134,6 +146,10 @@ export function AIChatWindow({ className }: AIChatWindowProps) {
       e.preventDefault()
       sendMessage()
     }
+  }
+
+  const handleRewardComplete = () => {
+    setRewardInfo(null)
   }
 
   const startInitialConversation = () => {
@@ -310,6 +326,12 @@ export function AIChatWindow({ className }: AIChatWindowProps) {
           )}
         </div>
       </CardContent>
+
+      {/* Уведомление о наградах */}
+      <TCoinRewardNotification 
+        rewards={rewardInfo}
+        onComplete={handleRewardComplete}
+      />
     </Card>
   )
 }
